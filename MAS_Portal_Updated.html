@@ -1,0 +1,2824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAS Cartoon Scanning & SAP Portal</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS for reading/writing Excel & CSV -->
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- jsPDF & AutoTable for PDF Export -->
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <!-- JsBarcode for generating real visual barcodes -->
+    <script defer src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #030712;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #f8fafc;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Inspired Abstract Luminous Wave Backdrop (Original SVG + CSS Glow) */
+        .login-bg-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at 22% 48%, rgba(6, 182, 212, 0.28) 0%, rgba(16, 185, 129, 0.14) 24%, transparent 52%),
+                radial-gradient(circle at 78% 48%, rgba(236, 72, 153, 0.28) 0%, rgba(139, 92, 246, 0.16) 26%, transparent 54%),
+                radial-gradient(circle at 50% 50%, #090d16 0%, #02040a 100%);
+            pointer-events: none;
+        }
+
+        .login-bg-canvas svg {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: blur(0.4px) saturate(1.25);
+            animation: auroraBreath 12s ease-in-out infinite alternate;
+        }
+
+        @keyframes auroraBreath {
+            0% { transform: scale(1) translateY(0px); opacity: 0.92; }
+            100% { transform: scale(1.04) translateY(-6px); opacity: 1; }
+        }
+
+        .btn-mas {
+            background-color: #1e293b;
+            color: #ffffff;
+            font-weight: 600;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            user-select: none;
+        }
+
+        .btn-mas:hover {
+            background-color: #0f172a;
+            transform: translateY(-1.5px);
+            box-shadow: 0 5px 12px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+        }
+
+        .btn-mas:active {
+            transform: translateY(1.5px) scale(0.98);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-mas-red { background-color: #dc2626; border-color: #b91c1c; }
+        .btn-mas-red:hover { background-color: #b91c1c; }
+        .btn-mas-green { background-color: #15803d; border-color: #166534; }
+        .btn-mas-green:hover { background-color: #166534; }
+        .btn-mas-blue { background-color: #2563eb; border-color: #1d4ed8; }
+        .btn-mas-blue:hover { background-color: #1d4ed8; }
+
+        .login-container {
+            background: rgba(12, 18, 32, 0.56);
+            backdrop-filter: blur(22px) saturate(140%);
+            -webkit-backdrop-filter: blur(22px) saturate(140%);
+            padding: 42px 36px 36px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            box-shadow:
+                0 25px 60px rgba(0, 0, 0, 0.72),
+                inset 0 1px 0 rgba(255, 255, 255, 0.22),
+                0 0 45px rgba(56, 189, 248, 0.12);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            z-index: 10;
+            position: relative;
+        }
+
+        .logo-box {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .logo-box img {
+            max-width: 140px;
+            height: auto;
+            margin-bottom: 8px;
+            filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45));
+        }
+
+        .login-container h2 {
+            margin-bottom: 6px;
+            color: #ffffff;
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        p.subtitle {
+            color: rgba(226, 232, 240, 0.75);
+            font-size: 13px;
+            margin-bottom: 28px;
+        }
+
+        .input-group {
+            margin-bottom: 22px;
+            text-align: left;
+            position: relative;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.4px;
+            margin-bottom: 6px;
+            color: rgba(241, 245, 249, 0.88);
+        }
+
+        .input-field-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-field-wrap svg.field-icon {
+            position: absolute;
+            right: 10px;
+            width: 18px;
+            height: 18px;
+            color: rgba(255, 255, 255, 0.85);
+            pointer-events: none;
+        }
+
+        .input-group input {
+            display: block;
+            width: 100%;
+            min-height: 42px;
+            padding: 10px 36px 10px 8px;
+            border: none;
+            border-bottom: 1.5px solid rgba(255, 255, 255, 0.48);
+            border-radius: 6px 6px 0 0;
+            font-size: 14px;
+            line-height: 1.4;
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
+            caret-color: #38bdf8;
+            background-color: rgba(255, 255, 255, 0.05) !important;
+            opacity: 1 !important;
+            outline: none;
+            box-shadow: none;
+            transition: border-color 0.2s ease, background-color 0.2s ease;
+        }
+
+        .input-group input::placeholder {
+            color: rgba(203, 213, 225, 0.65) !important;
+            -webkit-text-fill-color: rgba(203, 213, 225, 0.65) !important;
+            opacity: 1;
+        }
+
+        .input-group input:focus {
+            border-bottom-color: #38bdf8;
+            background-color: rgba(255, 255, 255, 0.1) !important;
+            box-shadow: 0 4px 14px -6px rgba(56, 189, 248, 0.55);
+        }
+
+        .input-group input:-webkit-autofill,
+        .input-group input:-webkit-autofill:hover,
+        .input-group input:-webkit-autofill:focus {
+            -webkit-text-fill-color: #ffffff !important;
+            box-shadow: 0 0 0 1000px rgba(15, 23, 42, 0.92) inset !important;
+            caret-color: #38bdf8;
+        }
+
+        .login-submit-btn {
+            width: 100%;
+            padding: 12px 20px;
+            margin-top: 8px;
+            border: none;
+            border-radius: 9999px;
+            background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%);
+            color: #0f172a;
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.4px;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(255, 255, 255, 0.22);
+            transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+
+        .login-submit-btn:hover {
+            background: #ffffff;
+            transform: translateY(-1.5px);
+            box-shadow: 0 12px 28px rgba(56, 189, 248, 0.35);
+        }
+
+        .login-submit-btn:active {
+            transform: translateY(1px) scale(0.99);
+        }
+
+        .error-msg {
+            color: #fca5a5;
+            background: rgba(220, 38, 38, 0.2);
+            border: 1px solid rgba(248, 113, 113, 0.4);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 13px;
+            margin-top: 14px;
+            display: none;
+        }
+
+        .dashboard {
+            display: none;
+            width: 100%;
+            height: 100vh;
+            background: #f4f6f9;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .navbar {
+            background: #ffffff;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            z-index: 20;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .navbar-brand img {
+            height: 35px;
+        }
+
+        .navbar-brand span {
+            font-weight: 700;
+            font-size: 18px;
+            color: #1a1a2e;
+        }
+
+        .main-content {
+            padding: 24px 24px;
+            max-width: 1620px;
+            margin: 0 auto;
+            width: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            flex: 1;
+            z-index: 20;
+            position: relative;
+        }
+        .main-content .bg-white.rounded-xl {
+            border-radius: 18px !important;
+            overflow: hidden;
+        }
+
+        table tbody tr:hover,
+        table tbody tr:hover > td {
+            background-color: #90E5F9 !important;
+        }
+        .scan-result-table {
+            table-layout: auto !important;
+            width: 100% !important;
+        }
+        
+        #scanTableBody td:not(.scan-summary-cell),
+        #modalTableBody td {
+            padding-top: 5px !important;
+            padding-bottom: 5px !important;
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            vertical-align: middle !important;
+            white-space: nowrap !important;
+        }
+        #scanTableBody tr:not(.scan-summary-row),
+        #modalTableBody tr {
+            height: 32px !important;
+        }
+        .scan-result-table th {
+            background-color: #0f172a !important;
+            color: #f8fafc !important;
+            font-size: 13px !important;
+            font-weight: 800 !important;
+            padding: 8px 8px !important;
+            border-color: #334155 !important;
+            white-space: nowrap !important;
+        }
+        .scan-result-table button,
+        .scan-result-table input[type="number"] {
+            font-size: 12px !important;
+            font-weight: 700 !important;
+        }
+        .scan-summary-row td,
+        .scan-summary-cell {
+            position: sticky !important;
+            bottom: 0 !important;
+            z-index: 15 !important;
+            background-color: #e2e8f0 !important;
+            color: #0f172a !important;
+            font-size: 12px !important;
+            font-weight: 800 !important;
+            padding-top: 6px !important;
+            padding-bottom: 6px !important;
+            border-top: 2px solid #475569 !important;
+            box-shadow: 0 -2px 6px rgba(15, 23, 42, 0.12);
+        }
+
+        /* ===== Universal Table Filter Styling ===== */
+        .th-content-wrapper {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            gap: 6px;
+        }
+        .filter-btn-ui {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            border: 0;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.15);
+            color: #cbd5e1;
+            cursor: pointer;
+            transition: all 0.15s;
+            flex-shrink: 0;
+        }
+        .filter-btn-ui:hover {
+            background: rgba(255,255,255,0.3);
+            color: #ffffff;
+        }
+        .filter-btn-ui.active {
+            background: #dc2626;
+            color: #ffffff;
+        }
+        .filter-dropdown-ui {
+            display: none;
+            position: absolute;
+            top: calc(100% + 4px);
+            right: 0;
+            width: 200px;
+            max-height: 230px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            background: #ffffff;
+            border: 1px solid #94a3b8;
+            border-radius: 6px;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.28);
+            z-index: 9999;
+            text-transform: none;
+            letter-spacing: normal;
+            font-weight: 500;
+            padding: 0;
+            flex-direction: column;
+            color: #1e293b;
+        }
+        .filter-dropdown-ui.open {
+            display: flex;
+        }
+        .filter-search-input {
+            width: 100%;
+            padding: 6px 8px;
+            font-size: 11px;
+            border: none;
+            border-bottom: 1px solid #e2e8f0;
+            outline: none;
+            border-radius: 6px 6px 0 0;
+            position: sticky;
+            top: 0;
+            background: #ffffff;
+            z-index: 2;
+            color: #0f172a;
+        }
+        .filter-options-container {
+            overflow-y: auto;
+            flex: 1;
+        }
+        .filter-option-btn {
+            display: block;
+            width: 100%;
+            min-height: 24px;
+            padding: 4px 10px;
+            color: #1e293b;
+            background: #ffffff;
+            text-align: left;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 11px;
+            cursor: pointer;
+            border: 0;
+            transition: background 0.1s;
+        }
+        .filter-option-btn:hover,
+        .filter-option-btn:focus {
+            color: #ffffff;
+            background: #2563eb;
+            outline: none;
+        }
+        .filter-option-btn.selected {
+            background: #dcfce7;
+            color: #14532d;
+            font-weight: 700;
+        }
+        .filter-empty-text {
+            padding: 6px 10px;
+            color: #64748b;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+
+        /* Custom Spin Buttons for Inputs */
+        .custom-spin-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+        .custom-spin-wrapper input {
+            width: 100%;
+            padding-right: 28px; /* Space for buttons */
+        }
+        .spin-btn-group {
+            position: absolute;
+            right: 1px;
+            top: 1px;
+            bottom: 1px;
+            width: 24px;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid #cbd5e1;
+            background: #f8fafc;
+            border-radius: 0 6px 6px 0;
+            overflow: hidden;
+        }
+        .spin-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            color: #475569;
+            font-size: 8px;
+            transition: background 0.1s;
+        }
+        .spin-btn:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+        .spin-btn:first-child {
+            border-bottom: 1px solid #cbd5e1;
+        }
+        
+        /* Hide default spin buttons */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- LUMINOUS ABSTRACT WAVE BACKGROUND -->
+    <div class="login-bg-canvas" aria-hidden="true">
+        <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <filter id="neonGlow" x="-25%" y="-25%" width="150%" height="150%">
+                    <feGaussianBlur stdDeviation="10" result="blur1"/>
+                    <feGaussianBlur stdDeviation="24" result="blur2"/>
+                    <feMerge>
+                        <feMergeNode in="blur2"/>
+                        <feMergeNode in="blur1"/>
+                        <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                </filter>
+                <linearGradient id="leftCyan" x1="0%" y1="50%" x2="100%" y2="50%">
+                    <stop offset="0%" stop-color="#0284c7" stop-opacity="0.95"/>
+                    <stop offset="55%" stop-color="#22d3ee" stop-opacity="1"/>
+                    <stop offset="100%" stop-color="#34d399" stop-opacity="0.85"/>
+                </linearGradient>
+                <linearGradient id="leftEmerald" x1="0%" y1="100%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#10b981" stop-opacity="0.2"/>
+                    <stop offset="50%" stop-color="#34d399" stop-opacity="0.95"/>
+                    <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.7"/>
+                </linearGradient>
+                <linearGradient id="rightMagenta" x1="100%" y1="50%" x2="0%" y2="50%">
+                    <stop offset="0%" stop-color="#db2777" stop-opacity="0.95"/>
+                    <stop offset="55%" stop-color="#f43f5e" stop-opacity="1"/>
+                    <stop offset="100%" stop-color="#a855f7" stop-opacity="0.85"/>
+                </linearGradient>
+                <linearGradient id="rightViolet" x1="100%" y1="100%" x2="0%" y2="0%">
+                    <stop offset="0%" stop-color="#9333ea" stop-opacity="0.2"/>
+                    <stop offset="50%" stop-color="#ec4899" stop-opacity="0.95"/>
+                    <stop offset="100%" stop-color="#6366f1" stop-opacity="0.7"/>
+                </linearGradient>
+            </defs>
+
+            <!-- Left Cyan & Emerald Flowing Energy Ribbons -->
+            <g filter="url(#neonGlow)" fill="none" stroke-linecap="round">
+                <path d="M -40 430 C 260 430, 380 180, 560 260 C 710 325, 620 560, 450 510 C 310 470, 380 280, 650 370" stroke="url(#leftCyan)" stroke-width="5"/>
+                <path d="M -40 455 C 240 470, 360 660, 430 890" stroke="url(#leftCyan)" stroke-width="4.5"/>
+                <path d="M 110 380 C 280 190, 520 150, 670 330 C 780 460, 620 670, 470 570 C 350 490, 430 330, 690 420" stroke="url(#leftEmerald)" stroke-width="3.5"/>
+                <path d="M -20 442 C 310 442, 420 530, 540 480 C 660 430, 610 290, 480 340 C 370 385, 450 590, 500 900" stroke="#22d3ee" stroke-width="2.5" opacity="0.85"/>
+                <path d="M 180 510 C 330 620, 540 610, 660 460" stroke="#10b981" stroke-width="3" opacity="0.75"/>
+            </g>
+
+            <!-- Right Magenta & Violet Flowing Energy Ribbons -->
+            <g filter="url(#neonGlow)" fill="none" stroke-linecap="round">
+                <path d="M 1640 430 C 1340 430, 1220 180, 1040 260 C 890 325, 980 560, 1150 510 C 1290 470, 1220 280, 950 370" stroke="url(#rightMagenta)" stroke-width="5"/>
+                <path d="M 1640 455 C 1360 470, 1240 660, 1170 890" stroke="url(#rightMagenta)" stroke-width="4.5"/>
+                <path d="M 1490 380 C 1320 190, 1080 150, 930 330 C 820 460, 980 670, 1130 570 C 1250 490, 1170 330, 910 420" stroke="url(#rightViolet)" stroke-width="3.5"/>
+                <path d="M 1620 442 C 1290 442, 1180 530, 1060 480 C 940 430, 990 290, 1120 340 C 1230 385, 1150 590, 1100 900" stroke="#f472b6" stroke-width="2.5" opacity="0.85"/>
+                <path d="M 1420 510 C 1270 620, 1060 610, 940 460" stroke="#a855f7" stroke-width="3" opacity="0.75"/>
+            </g>
+        </svg>
+    </div>
+
+    <!-- LOGIN SECTION -->
+    <div class="login-container" id="loginSection">
+        <div class="logo-box">
+            <img src="mas-logo.png" alt="MAS Logo" onerror="this.style.display='none'; document.getElementById('fallbackLogo').style.display='block';">
+            <div class="logo-text" id="fallbackLogo" style="font-size:32px; font-weight:900; color:#f43f5e; letter-spacing:2px; display:none; margin-bottom:6px; text-shadow: 0 2px 14px rgba(244,63,94,0.45);">MAS</div>
+        </div>
+        <h2>Login</h2>
+        <p class="subtitle">MAS Carton Scanning &amp; SAP Portal</p>
+
+        <form onsubmit="handleLogin(event)">
+            <div class="input-group">
+                <label for="username">User ID / Username</label>
+                <div class="input-field-wrap">
+                    <input type="text" id="username" placeholder="Enter your username" required>
+                    <svg class="field-icon" fill="currentColor" viewBox="0 0 20 20"><path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/></svg>
+                </div>
+            </div>
+            <div class="input-group">
+                <label for="password">Password</label>
+                <div class="input-field-wrap">
+                    <input type="password" id="password" placeholder="Enter your password" required>
+                    <svg class="field-icon" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+                </div>
+            </div>
+            <button type="submit" class="login-submit-btn">Login</button>
+            <p class="error-msg" id="errorMsg">Invalid Username or Password!</p>
+        </form>
+        <p style="margin-top: 20px; font-size: 11.5px; color: rgba(203, 213, 225, 0.6);">Authorized Personnel Access Only</p>
+    </div>
+
+    <!-- DASHBOARD SECTION -->
+    <div class="dashboard" id="dashboardSection">
+        <nav class="navbar">
+            <div class="navbar-brand">
+                <img src="mas-logo.png" alt="MAS" onerror="this.style.display='none'">
+                <span>MAS Cartoon Scanning & SAP Portal</span>
+            </div>
+            <button class="btn-mas px-4 py-2 text-sm" onclick="handleLogout()">Logout</button>
+        </nav>
+
+        <div class="main-content">
+            
+            <!-- Top Section: SAP Upload & Carton Scanning -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-7">
+                
+                <!-- 1. Original SAP Data File Box + Added MM File Box -->
+                <div class="lg:col-span-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Original SAP Data File Box -->
+                    <div class="bg-white rounded-xl shadow-md p-5 border-t-4 border-slate-800 flex flex-col justify-between">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-800 mb-1.5">1. Upload SAP Data File</h3>
+                            <p class="text-gray-500 text-xs mb-3">Upload your SAP export (.xlsx, .xls, .csv) to build the database.</p>
+
+                            <label class="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition">
+                                <div class="flex flex-col items-center justify-center pt-2 pb-2 px-2 text-center">
+                                    <svg class="w-5 h-5 mb-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                                    <p class="text-xs text-gray-500"><span class="font-semibold">Click to upload</span> SAP file</p>
+                                </div>
+                                <input type="file" id="excelFile" class="hidden" accept=".xlsx, .xls, .csv" onchange="handleFileUpload(event, 1)" />
+                            </label>
+
+                            <div id="uploadProgressWrapper1" class="hidden mt-2">
+                                <div class="w-full h-3.5 bg-slate-200 rounded-full overflow-hidden relative shadow-inner">
+                                    <div id="uploadProgressBar1" class="h-full bg-emerald-600 transition-all duration-150 ease-out" style="width: 0%;"></div>
+                                    <span id="uploadProgressText1" class="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-slate-800">0%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap items-center justify-between gap-1.5 mt-2">
+                            <p id="fileName1" class="text-xs text-green-600 font-medium flex items-center gap-1 break-all">Database Status: <span id="dbLoadStatus1" class="font-bold">Not Loaded</span></p>
+                            <div class="flex items-center gap-2 shrink-0">
+                                <button type="button" id="loadSavedDbBtn1" onclick="loadSavedDatabaseManually()" class="hidden text-[11px] underline text-indigo-700 hover:text-indigo-900 font-semibold">Load Saved DB</button>
+                                <button type="button" id="clearFileBtn1" onclick="clearUploadedSlot(1)" title="Clear uploaded SAP file" class="px-2 py-0.5 text-[11px] font-bold rounded bg-red-100 text-red-700 hover:bg-red-600 hover:text-white border border-red-300 transition cursor-pointer">Clear</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Newly Added MM File Box -->
+                    <div class="bg-white rounded-xl shadow-md p-5 border-t-4 border-indigo-800 flex flex-col justify-between">
+                        <div>
+                            <h3 id="mmHeader2" class="text-base font-bold text-slate-800 mb-1.5 leading-snug">Upload MM file</h3>
+                            <p class="text-gray-500 text-xs mb-3">Upload MM Excel file (.xlsx, .xls, .csv) to add records.</p>
+
+                            <label class="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition">
+                                <div class="flex flex-col items-center justify-center pt-2 pb-2 px-2 text-center">
+                                    <svg class="w-5 h-5 mb-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                                    <p class="text-xs text-gray-500"><span class="font-semibold">Click to upload</span> MM file</p>
+                                </div>
+                                <input type="file" id="excelFile2" class="hidden" accept=".xlsx, .xls, .csv" onchange="handleFileUpload(event, 2)" />
+                            </label>
+
+                            <div id="uploadProgressWrapper2" class="hidden mt-2">
+                                <div class="w-full h-3.5 bg-slate-200 rounded-full overflow-hidden relative shadow-inner">
+                                    <div id="uploadProgressBar2" class="h-full bg-emerald-600 transition-all duration-150 ease-out" style="width: 0%;"></div>
+                                    <span id="uploadProgressText2" class="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-slate-800">0%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap items-center justify-between gap-1.5 mt-2">
+                            <p id="fileName2" class="text-xs text-green-600 font-medium flex items-center gap-1 break-all">Database Status: <span id="dbLoadStatus2" class="font-bold">Not Loaded</span></p>
+                            <div class="flex items-center gap-2 shrink-0">
+                                <button type="button" id="loadSavedDbBtn2" onclick="loadSavedDatabaseManually()" class="hidden text-[11px] underline text-indigo-700 hover:text-indigo-900 font-semibold">Load Saved DB</button>
+                                <button type="button" id="clearFileBtn2" onclick="clearUploadedSlot(2)" title="Clear uploaded MM file" class="px-2 py-0.5 text-[11px] font-bold rounded bg-red-100 text-red-700 hover:bg-red-600 hover:text-white border border-red-300 transition cursor-pointer">Clear</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Carton Scanning Box -->
+                <div class="lg:col-span-6 bg-white rounded-xl shadow-md p-5 border-t-4 border-red-600 flex flex-col justify-between">
+                    <div class="flex items-center justify-between gap-2 mb-2">
+                        <h3 class="text-lg font-bold text-slate-800">2. Cartoon / Barcode Scanning</h3>
+                        <label for="autoScanCheckbox" class="inline-flex items-center gap-2 cursor-pointer select-none px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 border border-slate-300 transition">
+                            <input type="checkbox" id="autoScanCheckbox" onchange="handleAutoScanToggle(this.checked)" class="w-4 h-4 accent-red-600 cursor-pointer rounded">
+                            <span class="text-xs font-bold text-slate-800">Auto scan</span>
+                        </label>
+                    </div>
+                    <p id="scanModeHint" class="text-gray-500 text-xs mb-4">Manual mode: enter Barcode and press Scan or Enter.</p>
+                    
+                    <div class="mb-3 flex items-end gap-3">
+                        <div class="w-1/2">
+                            <label for="kanbanTipInput" class="block text-xs font-bold text-slate-700 mb-1">KANBAN ID</label>
+                            <div class="custom-spin-wrapper">
+                                <input type="text" id="kanbanTipInput" placeholder="KANBAN ID..." class="w-full pl-3.5 pr-9 py-2 border border-gray-300 rounded-lg text-base font-bold text-slate-900 outline-none focus:border-indigo-600 shadow-sm bg-slate-50">
+                                <div class="spin-btn-group">
+                                    <button type="button" class="spin-btn" onclick="stepInput('kanbanTipInput', 1)">&#9650;</button>
+                                    <button type="button" class="spin-btn" onclick="stepInput('kanbanTipInput', -1)">&#9660;</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="w-28 shrink-0">
+                            <label for="palletIdInput" class="block text-xs font-bold text-slate-700 mb-1">Pallet ID</label>
+                            <div class="custom-spin-wrapper">
+                                <input type="text" id="palletIdInput" maxlength="5" placeholder="000" class="w-full pl-3 pr-7 py-2 border border-gray-300 rounded-lg text-base font-bold text-slate-900 outline-none focus:border-teal-600 shadow-sm bg-slate-50">
+                                <div class="spin-btn-group">
+                                    <button type="button" class="spin-btn" onclick="stepInput('palletIdInput', 1)">&#9650;</button>
+                                    <button type="button" class="spin-btn" onclick="stepInput('palletIdInput', -1)">&#9660;</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2.5 mb-3.5">
+                        <input type="text" id="scanInput" placeholder="Scan or enter Barcode..." autofocus style="background-color: #eefbf7;" class="flex-1 px-4 py-3 border-2 border-teal-300/80 rounded-xl text-base font-bold text-slate-900 outline-none focus:border-teal-600 focus:bg-[#e3f8f1] shadow-sm transition" oninput="handleScanInput(event)" onkeydown="handleScanKeyPress(event)" onpaste="handleScanPaste(event)">
+                        <button onclick="processScan()" class="btn-mas btn-mas-red px-6 py-3 text-sm">Scan</button>
+                    </div>
+                    <div class="text-xs text-gray-500 flex flex-wrap items-center">
+                        <span>Total Scanned: <strong id="scannedCount" class="text-slate-800">0</strong></span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 3. Scan Results List Section -->
+            <div class="bg-white rounded-xl shadow-md p-7 border-l-4 border-red-600">
+                <div class="flex flex-wrap justify-between items-center gap-3 mb-3">
+                    <h3 class="text-md font-bold text-slate-800">Scan Result & Details List</h3>
+                    <div class="flex items-center gap-2.5">
+                        <button onclick="openDatabaseModal()" class="btn-mas px-4 py-2.5" style="font-size: 14px; font-weight: 700;">View Database Records Preview</button>
+                        <button onclick="exportScannedData()" class="btn-mas btn-mas-green px-4 py-2.5" style="font-size: 14px; font-weight: 700;">Export to Excel</button>
+                        <button onclick="exportScannedPDF()" class="btn-mas btn-mas-blue px-4 py-2.5" style="font-size: 14px; font-weight: 700;">Export PDF (Packing List)</button>
+                        <button onclick="clearScanFilters()" id="clearScanFiltersBtn" class="btn-mas px-4 py-2.5 bg-red-100 text-red-700 hover:bg-red-200 hover:text-red-800 border-red-300" style="font-size: 14px; font-weight: 700;">Clear Filters</button>
+                    </div>
+                </div>
+
+                <div class="overflow-y-auto overflow-x-hidden max-h-[28rem] border border-slate-300 rounded-lg">
+                    <table class="w-full text-left border-collapse scan-result-table">
+                        <thead id="scanTableHead" class="sticky top-0 z-10 shadow-sm">
+                            <tr class="bg-slate-900 text-white text-xs border-b border-slate-700">
+                                <th class="p-2.5 border-r sticky top-0" style="background-color: #0f766e !important; color: #ffffff !important;">Pallet ID</th>
+                                <th class="p-2.5 border-r bg-slate-900 sticky top-0">Barcode</th>
+                                <th class="p-2.5 border-r bg-slate-900 sticky top-0">KANBAN NO</th>
+                                <th class="p-2.5 border-r bg-slate-900 sticky top-0">Plnt</th>
+                                <th class="p-2.5 border-r bg-slate-900 sticky top-0">Document</th>
+                                <th class="p-2.5 border-r bg-slate-900 sticky top-0">Item</th>
+                                <th class="p-2.5 border-r bg-slate-900 sticky top-0">SO::LI</th>
+                                <th class="p-2.5 border-r bg-slate-900 sticky top-0">Style</th>
+                                <th class="p-2.5 border-r bg-slate-900 sticky top-0">color</th>
+                                <th class="p-2.5 border-r bg-slate-900 sticky top-0">Carton ID</th>
+                                <th class="p-2.5 border-r bg-slate-900 sticky top-0">Size</th>
+                                <th class="p-2.5 border-r bg-slate-900 sticky top-0">Quantity</th>
+                                <th class="p-2.5 border-r bg-slate-900 sticky top-0">Item</th>
+                                <th class="p-2.5 text-center bg-slate-900 sticky top-0">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scanTableBody" class="text-xs text-gray-600 divide-y divide-gray-200">
+                            <tr>
+                                <td colspan="14" class="p-4 text-center text-gray-400">No cartons scanned yet. Scanned records will appear here one below the other.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- FULLSCREEN DATABASE RECORDS PREVIEW MODAL -->
+    <div id="databaseModal" class="fixed inset-0 bg-slate-900 hidden flex-col z-50">
+        <!-- Modal Header -->
+        <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 px-6 py-4 text-white flex justify-between items-center shadow-md flex-shrink-0">
+            <div>
+                <h2 class="text-xl font-extrabold tracking-wide text-white">MAS SAP Database Explorer & Formulas Barcodes (A-I)</h2>
+                <div class="flex flex-wrap items-center gap-4 text-xs text-white mt-1">
+                    <span>Total Added Rows: <strong id="modalTotalAddedRows" class="font-bold text-amber-300 text-sm">0</strong></span>
+                    <span class="text-white/40">|</span>
+                    <span>Total Database Quantity: <strong id="modalTotalSumQuantity" class="font-bold text-green-400 text-sm">0</strong></span>
+                    <span class="text-white/40">|</span>
+                    <span>Filtered Quantity (SUM): <strong id="modalFilteredQuantity" class="font-bold text-cyan-300 text-sm">0</strong></span>
+                    <span class="text-white/40">|</span>
+                    <span>Showing Rows: <strong id="modalRecordCount" class="font-bold text-white text-sm">0</strong></span>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="clearModalFilters()" class="btn-mas px-4 py-2 bg-red-100 text-red-700 hover:bg-red-600 hover:text-white border-red-300 text-xs font-bold">Clear Filters</button>
+                <button onclick="closeDatabaseModal()" class="btn-mas btn-mas-red px-4 py-2 text-xs">&times; Close</button>
+            </div>
+        </div>
+
+        <!-- Controls Bar -->
+        <div class="px-6 py-3.5 bg-slate-200 border-b border-slate-300 flex flex-wrap gap-3 items-center justify-between flex-shrink-0 shadow-inner">
+            <div class="relative w-96">
+                <input type="text" id="modalGlobalSearch" placeholder="🔍 Search across all columns..." onkeyup="debouncedApplyModalFilters()" class="w-full px-4 py-2.5 border-2 border-indigo-500 rounded-xl text-xs font-semibold outline-none focus:border-indigo-700 bg-white shadow-md text-slate-800 placeholder-slate-400">
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <button onclick="exportDatabaseWithFormulas()" class="btn-mas btn-mas-green px-3.5 py-2 text-xs">Export Sheet + Barcodes</button>
+            </div>
+        </div>
+
+        <!-- Table Container with Sticky Header & Filters -->
+        <div class="flex-1 overflow-auto bg-white relative">
+            <table class="w-full text-left border-collapse text-xs">
+                <thead id="modalTableHead" class="sticky top-0 z-20 shadow-sm"></thead>
+                <tbody id="modalTableBody" class="divide-y divide-slate-200 text-slate-700"></tbody>
+            </table>
+            <!-- Load More Button for Performance -->
+            <div id="modalLoadMoreContainer" class="p-4 flex justify-center bg-slate-50 border-t border-slate-200">
+                <button id="modalLoadMoreBtn" onclick="loadMoreModalRows()" class="btn-mas px-6 py-2 bg-indigo-600 text-white hover:bg-indigo-700 font-bold text-sm shadow">Load More Rows</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        let localDatabase = [];
+        let scannedList = [];
+        let columnOptionsCache = new Map();
+        let barcodeLookupMap = new Map();
+        let filterDebounceTimer = null;
+        let renderRafId = null;
+        let lastLoadedFileLabel = "";
+        let autoScanTimer = null;
+        let lastAutoScannedValue = "";
+        let lastAutoScannedAt = 0;
+        const AUTO_SCAN_DEBOUNCE_MS = 50; // Reduced for instant auto-scan
+
+        // Optimization Maps
+        let barcodeQtySumMap = new Map();
+        let soLiStyleColorMap = new Map();
+        let barcodeItemMap = new Map();
+
+        // Modal Pagination Variables
+        let modalFilteredRows = [];
+        let modalRenderLimit = 100;
+        const MODAL_PAGE_SIZE = 100;
+        const modalColumnFilters = {};
+
+        const VALID_USER = "admin";
+        const VALID_PASS = "1234";
+        const IDB_NAME = "MAS_SAP_Portal_DB";
+        const IDB_STORE = "records";
+
+        // Spin Button logic (Works for both numbers and text)
+        function stepInput(inputId, amount) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+            let currentVal = input.value.trim();
+            
+            if (currentVal === "") {
+                currentVal = "0";
+            }
+
+            if (/^\d+$/.test(currentVal)) {
+                let num = parseInt(currentVal, 10);
+                num += amount;
+                if (num < 0) num = 0;
+                input.value = num;
+            } else {
+                const match = currentVal.match(/(\d+)(?!.*\d)/);
+                if (match) {
+                    let num = parseInt(match[1], 10) + amount;
+                    if (num < 0) num = 0;
+                    const paddedNum = String(num).padStart(match[1].length, '0');
+                    input.value = currentVal.replace(/(\d+)(?!.*\d)/, paddedNum);
+                } else {
+                    input.value = currentVal + amount;
+                }
+            }
+            input.dispatchEvent(new Event('input'));
+        }
+
+        function openIndexedDb() {
+            return new Promise((resolve, reject) => {
+                if (!("indexedDB" in window)) {
+                    reject(new Error("IndexedDB not supported"));
+                    return;
+                }
+                const req = indexedDB.open(IDB_NAME, 1);
+                req.onupgradeneeded = function(e) {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(IDB_STORE)) {
+                        db.createObjectStore(IDB_STORE);
+                    }
+                };
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function saveToIdbKey(key, value) {
+            const db = await openIndexedDb();
+            const tx = db.transaction(IDB_STORE, "readwrite");
+            tx.objectStore(IDB_STORE).put(value, key);
+            await new Promise((resolve, reject) => {
+                tx.oncomplete = resolve;
+                tx.onerror = () => reject(tx.error);
+            });
+            db.close();
+        }
+
+        async function getFromIdbKey(key) {
+            const db = await openIndexedDb();
+            const tx = db.transaction(IDB_STORE, "readonly");
+            const req = tx.objectStore(IDB_STORE).get(key);
+            return new Promise((resolve, reject) => {
+                tx.oncomplete = () => {
+                    db.close();
+                    resolve(req.result);
+                };
+                tx.onerror = () => {
+                    db.close();
+                    reject(req.error);
+                };
+            });
+        }
+
+        async function saveDatabaseToIndexedDb(rows, meta) {
+            try {
+                await saveToIdbKey("sap_rows", rows);
+                await saveToIdbKey("sap_meta", meta);
+                await saveToIdbKey("slot1_rows", slot1Rows);
+                await saveToIdbKey("slot2_rows", slot2Rows);
+            } catch (err) {
+                console.warn("IndexedDB save skipped:", err);
+            }
+        }
+
+        async function clearDatabaseInIndexedDb() {
+            try {
+                const db = await openIndexedDb();
+                const tx = db.transaction(IDB_STORE, "readwrite");
+                const store = tx.objectStore(IDB_STORE);
+                store.delete("sap_rows");
+                store.delete("sap_meta");
+                store.delete("slot1_rows");
+                store.delete("slot2_rows");
+                await new Promise((resolve, reject) => {
+                    tx.oncomplete = resolve;
+                    tx.onerror = () => reject(tx.error);
+                });
+                db.close();
+            } catch (err) {
+                console.warn("IndexedDB clear skipped:", err);
+            }
+        }
+
+        async function loadDatabaseFromIndexedDb() {
+            const rows = (await getFromIdbKey("sap_rows")) || [];
+            const meta = (await getFromIdbKey("sap_meta")) || null;
+            const s1 = (await getFromIdbKey("slot1_rows")) || null;
+            const s2 = (await getFromIdbKey("slot2_rows")) || null;
+            return { rows, meta, s1, s2 };
+        }
+
+        async function clearUploadedSlot(slotNum) {
+            if (slotNum === 1) {
+                slot1Rows = [];
+                slot1Label = "";
+                slot1Date = "";
+                const input1 = document.getElementById("excelFile");
+                if (input1) input1.value = "";
+                const fileNameEl1 = document.getElementById("fileName1");
+                if (fileNameEl1) {
+                    fileNameEl1.innerHTML = 'Database Status: <span id="dbLoadStatus1" class="font-bold">Not Loaded</span>';
+                }
+                const wrap1 = document.getElementById("uploadProgressWrapper1");
+                if (wrap1) wrap1.classList.add("hidden");
+            } else if (slotNum === 2) {
+                slot2Rows = [];
+                slot2Label = "";
+                slot2Date = "";
+                const input2 = document.getElementById("excelFile2");
+                if (input2) input2.value = "";
+                const fileNameEl2 = document.getElementById("fileName2");
+                if (fileNameEl2) {
+                    fileNameEl2.innerHTML = 'Database Status: <span id="dbLoadStatus2" class="font-bold">Not Loaded</span>';
+                }
+                const h2 = document.getElementById("mmHeader2");
+                if (h2) h2.textContent = "Upload MM file";
+                const wrap2 = document.getElementById("uploadProgressWrapper2");
+                if (wrap2) wrap2.classList.add("hidden");
+            }
+
+            const combined = [...slot1Rows, ...slot2Rows];
+            localDatabase = combined;
+            rebuildCaches();
+
+            if (localDatabase.length === 0) {
+                lastLoadedFileLabel = "";
+                await clearDatabaseInIndexedDb();
+                const loadBtn1 = document.getElementById("loadSavedDbBtn1");
+                const loadBtn2 = document.getElementById("loadSavedDbBtn2");
+                if (loadBtn1) loadBtn1.classList.add("hidden");
+                if (loadBtn2) loadBtn2.classList.add("hidden");
+            } else {
+                const labels = [slot1Label, slot2Label].filter(Boolean);
+                lastLoadedFileLabel = labels.join(" + ");
+                await saveDatabaseToIndexedDb(localDatabase, {
+                    originalName: lastLoadedFileLabel,
+                    slot1Name: slot1Label,
+                    slot2Name: slot2Label,
+                    slot1Date: slot1Date,
+                    slot2Date: slot2Date,
+                    savedAt: new Date().toISOString(),
+                    rowCount: localDatabase.length
+                });
+            }
+        }
+
+        function rebuildBarcodeLookupMap() {
+            barcodeLookupMap.clear();
+            for (let i = 0; i < localDatabase.length; i++) {
+                const row = localDatabase[i];
+                const values = Object.values(row);
+                for (let j = 0; j < values.length; j++) {
+                    const raw = values[j];
+                    if (raw !== undefined && raw !== null) {
+                        const normalized = String(raw).trim().toLowerCase();
+                        if (normalized !== "" && !barcodeLookupMap.has(normalized)) {
+                            barcodeLookupMap.set(normalized, row);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Pre-calculate totals and lookups for instant scanning
+        function rebuildAdvancedCaches() {
+            barcodeQtySumMap.clear();
+            soLiStyleColorMap.clear();
+            barcodeItemMap.clear();
+
+            // 1. Build Quantity Sum Map & Barcode to Item Map
+            for (let i = 0; i < localDatabase.length; i++) {
+                const row = localDatabase[i];
+                const values = Object.values(row);
+                const qty = getRowQuantityValue(row);
+                
+                for (let j = 0; j < values.length; j++) {
+                    const val = String(values[j] ?? "").trim().toLowerCase();
+                    if (val !== "") {
+                        barcodeQtySumMap.set(val, (barcodeQtySumMap.get(val) || 0) + qty);
+                    }
+                }
+
+                const rawBun = getFieldVal(row, ["BUN.TYPE", "BUN TYPE", "BUNTYPE"]);
+                const resolved = resolveItemFromBunTypeRaw(rawBun);
+                if (resolved) {
+                    const barcodeVal = getFieldVal(row, ["BARCODE", "19", "V", "Barcode", "Bar Code", "Code", "UPC"]).toLowerCase();
+                    if (barcodeVal && !barcodeItemMap.has(barcodeVal)) barcodeItemMap.set(barcodeVal, resolved);
+                }
+            }
+
+            // 2. Build SoLi to Style/Color Map
+            const mmRows = getMmSourceRows();
+            for (let i = 0; i < mmRows.length; i++) {
+                const row = mmRows[i];
+                const soLi = normalizeSoLiCompare(getCombinedSoLiFromRow(row));
+                if (soLi && !soLiStyleColorMap.has(soLi)) {
+                    soLiStyleColorMap.set(soLi, {
+                        style: extractStyleFromRow(row),
+                        color: extractColorFromRow(row)
+                    });
+                }
+            }
+        }
+
+        function rebuildCaches() {
+            columnOptionsCache.clear();
+            rebuildBarcodeLookupMap();
+            rebuildAdvancedCaches();
+        }
+
+        let slot1Rows = [];
+        let slot2Rows = [];
+        let slot1Label = "";
+        let slot2Label = "";
+        let slot1Date = "";
+        let slot2Date = "";
+
+        function extractDateFromFileName(fileName) {
+            if (!fileName) return "";
+            const baseName = String(fileName).replace(/\.[^/.]+$/, "").trim();
+
+            let m = baseName.match(/(?:^|[^\d])(\d{4}[-/.]\d{1,2}[-/.]\d{1,2})(?:$|[^\d])/);
+            if (m) return m[1];
+
+            m = baseName.match(/(?:^|[^\d])(\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4})(?:$|[^\d])/);
+            if (m) return m[1];
+
+            m = baseName.match(/(?:^|[^\d])((?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01]))(?:$|[^\d])/);
+            if (m) {
+                const d8 = m[1];
+                return `${d8.slice(0, 4)}-${d8.slice(4, 6)}-${d8.slice(6, 8)}`;
+            }
+
+            m = baseName.match(/(?:^|[^\d])((?:0?[1-9]|1[0-2])[-_/](?:0?[1-9]|[12]\d|3[01]))(?:$|[^\d])/);
+            if (m) return m[1];
+
+            m = baseName.match(/((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[-_ ]?\d{1,2}(?:[-_ ]?\d{2,4})?|\d{1,2}[-_ ]?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*(?:[-_ ]?\d{2,4})?)/i);
+            if (m) return m[1].replace(/[_]+/g, " ").trim();
+
+            return "";
+        }
+
+        function updateMmHeaderWithDate(slotNum, fileName) {
+            if (slotNum !== 2) return;
+            const headerEl = document.getElementById("mmHeader2");
+            if (!headerEl) return;
+            const extractedDate = extractDateFromFileName(fileName);
+            slot2Date = extractedDate;
+            headerEl.textContent = extractedDate ? `Upload MM file ${extractedDate}` : "Upload MM file";
+        }
+
+        function syncCombinedDatabaseFromSlots() {
+            const combined = [...slot1Rows, ...slot2Rows];
+            localDatabase = combined;
+            rebuildCaches();
+
+            const labels = [slot1Label, slot2Label].filter(Boolean);
+            lastLoadedFileLabel = labels.join(" + ");
+
+            saveDatabaseToIndexedDb(localDatabase, {
+                originalName: lastLoadedFileLabel,
+                slot1Name: slot1Label,
+                slot2Name: slot2Label,
+                slot1Date: slot1Date,
+                slot2Date: slot2Date,
+                savedAt: new Date().toISOString(),
+                rowCount: localDatabase.length
+            });
+        }
+
+        function setUploadProgress(percent, slotNum = 1) {
+            const wrapper = document.getElementById(`uploadProgressWrapper${slotNum}`);
+            const bar = document.getElementById(`uploadProgressBar${slotNum}`);
+            const text = document.getElementById(`uploadProgressText${slotNum}`);
+            const clamped = Math.max(0, Math.min(100, Math.round(percent)));
+
+            if (wrapper) wrapper.classList.remove("hidden");
+            if (bar) bar.style.width = clamped + "%";
+            if (text) {
+                text.innerText = clamped + "%";
+                text.className = clamped > 52
+                    ? "absolute inset-0 flex items-center justify-center text-[9px] font-bold text-white"
+                    : "absolute inset-0 flex items-center justify-center text-[9px] font-bold text-slate-800";
+            }
+        }
+
+        function hideUploadProgressAfterCheck(slotNum = 1) {
+            const wrapper = document.getElementById(`uploadProgressWrapper${slotNum}`);
+            if (!wrapper) return;
+            setTimeout(() => {
+                wrapper.classList.add("hidden");
+            }, 350);
+        }
+
+        function renderFileLoadedWithCheck(displayLabel, slotNum = 1) {
+            const fileNameEl = document.getElementById(`fileName${slotNum}`);
+            if (!fileNameEl) return;
+            fileNameEl.innerHTML = "";
+
+            const labelText = document.createTextNode(`File Loaded: ${displayLabel} `);
+            const checkBadge = document.createElement("span");
+            checkBadge.className = "inline-flex items-center justify-center w-5 h-5 min-w-[20px] min-h-[20px] shrink-0 rounded-full bg-emerald-600 text-white text-xs font-extrabold leading-none shadow-sm ml-1.5";
+            checkBadge.style.borderRadius = "9999px";
+            checkBadge.title = "Loaded successfully";
+            checkBadge.innerHTML = "&#10003;";
+
+            fileNameEl.appendChild(labelText);
+            fileNameEl.appendChild(checkBadge);
+        }
+
+        async function restoreSavedDatabaseFromIdb() {
+            try {
+                const { rows, meta, s1, s2 } = await loadDatabaseFromIndexedDb();
+                if (rows && rows.length > 0) {
+                    localDatabase = rows;
+                    if (Array.isArray(s1) || Array.isArray(s2)) {
+                        slot1Rows = Array.isArray(s1) ? s1 : [];
+                        slot2Rows = Array.isArray(s2) ? s2 : [];
+                    } else {
+                        slot1Rows = rows;
+                        slot2Rows = [];
+                    }
+                    rebuildCaches();
+
+                    if (meta) {
+                        slot1Label = meta.slot1Name || (slot1Rows.length > 0 ? `Saved SAP DB (${slot1Rows.length} rows)` : "");
+                        slot2Label = meta.slot2Name || (slot2Rows.length > 0 ? `Saved MM DB (${slot2Rows.length} rows)` : "");
+                        slot1Date = meta.slot1Date || "";
+                        slot2Date = meta.slot2Date || "";
+                        lastLoadedFileLabel = meta.originalName || [slot1Label, slot2Label].filter(Boolean).join(" + ");
+
+                        if (slot2Date) {
+                            const h2 = document.getElementById("mmHeader2");
+                            if (h2) h2.textContent = `Upload MM file ${slot2Date}`;
+                        }
+                    } else {
+                        slot1Label = `Saved DB (${rows.length} rows)`;
+                        lastLoadedFileLabel = slot1Label;
+                    }
+
+                    if (slot1Label) {
+                        renderFileLoadedWithCheck(slot1Label, 1);
+                    }
+                    if (slot2Label) {
+                        renderFileLoadedWithCheck(slot2Label, 2);
+                    }
+                }
+            } catch (e) {
+                console.warn("IndexedDB restore skipped:", e);
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", async function() {
+            await restoreSavedDatabaseFromIdb();
+        });
+
+        async function loadSavedDatabaseManually() {
+            const fileNameEl1 = document.getElementById("fileName1");
+            if (fileNameEl1) fileNameEl1.innerText = "Loading saved data...";
+            await restoreSavedDatabaseFromIdb();
+            if (localDatabase.length === 0 && fileNameEl1) {
+                fileNameEl1.innerHTML = 'Database Status: <span id="dbLoadStatus1" class="font-bold">Not Loaded</span>';
+            }
+        }
+
+        function handleLogin(event) {
+            event.preventDefault();
+            const user = document.getElementById("username").value;
+            const pass = document.getElementById("password").value;
+            const errorMsg = document.getElementById("errorMsg");
+
+            if (user === VALID_USER && pass === VALID_PASS) {
+                errorMsg.style.display = "none";
+                document.getElementById("loginSection").style.display = "none";
+                document.getElementById("dashboardSection").style.display = "flex";
+
+                if (localDatabase.length === 0) {
+                    restoreSavedDatabaseFromIdb();
+                } else {
+                    if (slot1Label) {
+                        renderFileLoadedWithCheck(slot1Label, 1);
+                    } else {
+                        renderFileLoadedWithCheck(lastLoadedFileLabel || `DB (${localDatabase.length} records)`, 1);
+                    }
+                    if (slot2Label) {
+                        renderFileLoadedWithCheck(slot2Label, 2);
+                    }
+                }
+            } else {
+                errorMsg.style.display = "block";
+            }
+        }
+
+        function handleLogout() {
+            document.getElementById("username").value = "";
+            document.getElementById("password").value = "";
+            document.getElementById("dashboardSection").style.display = "none";
+            document.getElementById("loginSection").style.display = "block";
+        }
+
+        function findColumnKey(row, possibleNames) {
+            const rowKeys = Object.keys(row);
+            for (let name of possibleNames) {
+                const found = rowKeys.find(k => k.trim().toLowerCase() === name.toLowerCase());
+                if (found !== undefined) return found;
+            }
+            for (let name of possibleNames) {
+                const found = rowKeys.find(k => k.trim().toLowerCase().includes(name.toLowerCase()));
+                if (found !== undefined) return found;
+            }
+            for (let k of rowKeys) {
+                const lk = k.trim().toLowerCase();
+                const val = String(row[k]).trim();
+                for (let name of possibleNames) {
+                    const ln = name.toLowerCase();
+                    if ((ln.includes("barcode") || ln.includes("code") || ln.includes("v")) && (lk.includes("code") || lk.includes("barcode") || val.length > 8 && !isNaN(val))) return k;
+                    if ((ln.includes("plant") || ln.includes("plnt")) && (lk.includes("plant") || lk.includes("plnt") || lk.includes("site") || (val.length === 4 && isNaN(val)))) return k;
+                    if ((ln.includes("carton") || ln.includes("ctn") || ln.includes("box")) && (lk.includes("carton") || lk.includes("ctn") || lk.includes("box"))) return k;
+                    if ((ln.includes("quantity") || ln.includes("qty") || ln.includes("pcs")) && (lk.includes("qty") || lk.includes("quantity") || lk.includes("pcs") || lk.includes("t"))) return k;
+                }
+            }
+            return null;
+        }
+
+        function getFieldVal(row, possibleNames) {
+            const key = findColumnKey(row, possibleNames);
+            if (key && row[key] !== undefined && String(row[key]).trim() !== "") {
+                return String(row[key]).trim();
+            }
+            for (let k of Object.keys(row)) {
+                let val = String(row[k]).trim();
+                for (let name of possibleNames) {
+                    let ln = name.toLowerCase();
+                    if (ln.includes("barcode") && val.length > 8) return val;
+                    if (ln.includes("plant") && val.length === 4 && /^[A-Z0-9]+$/.test(val)) return val;
+                }
+            }
+            return "";
+        }
+
+        function getRowSoLiKey(row) {
+            const explicitSoLi = getFieldVal(row, ["DOCUMENT::ITEM", "SO::LI"]);
+            if (explicitSoLi !== "") return explicitSoLi;
+            const docVal = getFieldVal(row, ["Sales Document", "DOCUMENT", "DOC", "ORDER", "J"]);
+            const itemVal = getFieldVal(row, ["ITEM", "ITM", "ITEM NO"]);
+            if (docVal !== "" && itemVal !== "") return `${docVal}::${itemVal}`;
+            return docVal !== "" ? docVal : itemVal;
+        }
+
+        function extract800Prefix10(barcodeVal) {
+            const str = String(barcodeVal ?? "").trim();
+            if (!str) return "";
+
+            const match800 = str.match(/800\d{7,}/);
+            if (match800) {
+                return match800[0].substring(0, 10);
+            }
+
+            if (str.startsWith("800") && str.length >= 10) {
+                return str.substring(0, 10);
+            }
+            return "";
+        }
+
+        function padCartonIdForBarcode7(rawCartonVal) {
+            const digitsOnly = String(rawCartonVal ?? "").replace(/\D/g, "");
+            if (!digitsOnly) return "";
+
+            const num = parseInt(digitsOnly, 10);
+            if (num < 10) {
+                return "00" + num;
+            }
+            if (num < 100) {
+                return "0" + num;
+            }
+            return String(num);
+        }
+
+        function buildPrefixMapBySoLi(allRows) {
+            const soLiPrefixMap = new Map();
+
+            for (let i = 0; i < allRows.length; i++) {
+                const sourceRow = allRows[i];
+                const sourceBarcode = getFieldVal(sourceRow, ["BARCODE", "19", "V", "Barcode", "Bar Code", "Code", "UPC"]);
+                const prefix10 = extract800Prefix10(sourceBarcode);
+                if (!prefix10) continue;
+
+                const soLiKey = getRowSoLiKey(sourceRow);
+                if (soLiKey !== "" && !soLiPrefixMap.has(soLiKey)) {
+                    soLiPrefixMap.set(soLiKey, prefix10);
+                }
+            }
+
+            return { soLiPrefixMap };
+        }
+
+        function calculateAllFormulas(row, prefixMaps) {
+            const vVal = getFieldVal(row, ["19", "V", "Barcode", "Bar Code", "Code", "UPC"]);
+            const cartonRaw = getFieldVal(row, ["Carton ID", "Carton", "Ctn", "Box ID", "P", "Q"]);
+            const cartonVal = parseInt(String(cartonRaw).replace(/\D/g, ""), 10) || 0;
+            const wVal = getFieldVal(row, ["W", "Order", "Bundle"]);
+
+            let cartonStr = "";
+            if (cartonVal < 10) {
+                cartonStr = "00" + cartonVal;
+            } else if (cartonVal >= 10 && cartonVal < 100) {
+                cartonStr = "0" + cartonVal;
+            } else {
+                cartonStr = "" + cartonVal;
+            }
+
+            let a2 = "";
+            if (vVal) {
+                const vStr = String(vVal).trim();
+                let base10Part = "";
+                if (vStr.substring(0, 3) === "800") {
+                    base10Part = vStr.substring(0, 10);
+                } else {
+                    base10Part = vStr.substring(3, 12);
+                }
+                a2 = base10Part + cartonStr;
+            }
+
+            let b2 = "";
+            if (wVal) {
+                b2 = String(wVal).trim() + cartonStr;
+            } else {
+                b2 = cartonStr;
+            }
+
+            let c2 = "";
+            if (b2.length >= 13) {
+                c2 = b2.substring(0, 10) + b2.substring(b2.length - 3);
+            } else {
+                c2 = b2;
+            }
+
+            let d2 = "";
+            if (wVal && String(wVal).length >= 10) {
+                const wStr = String(wVal).trim();
+                const first10 = wStr.substring(0, 10);
+
+                if (/^\d{10}$/.test(first10)) {
+                    const digits = first10.split("").map(Number);
+                    let borrowIndex = digits.length - 1;
+
+                    while (borrowIndex >= 0 && digits[borrowIndex] === 0) {
+                        digits[borrowIndex] = 9;
+                        borrowIndex--;
+                    }
+
+                    if (borrowIndex >= 0) {
+                        digits[borrowIndex]--;
+                        const adjustedFirst10 = digits.join("");
+                        d2 = adjustedFirst10 + cartonVal;
+                    } else {
+                        d2 = "";
+                    }
+                }
+            }
+
+            let e2 = "";
+            if (wVal && String(wVal).length >= 10) {
+                const wStr = String(wVal).trim();
+                const first10 = wStr.substring(0, 10);
+
+                if (/^\d{10}$/.test(first10)) {
+                    const digits = first10.split("").map(Number);
+                    let carryIndex = digits.length - 1;
+
+                    while (carryIndex >= 0 && digits[carryIndex] === 9) {
+                        digits[carryIndex] = 0;
+                        carryIndex--;
+                    }
+
+                    if (carryIndex >= 0) {
+                        digits[carryIndex]++;
+                    } else {
+                        digits.unshift(1);
+                    }
+
+                    const adjustedFirstDigits = digits.join("");
+                    e2 = adjustedFirstDigits + cartonVal;
+                }
+            }
+
+            let f2 = "";
+            if (vVal) {
+                const vStr = String(vVal);
+                f2 = vStr.substring(0, 10) + cartonStr;
+            }
+
+            let g2 = "";
+            const soLiKey = getRowSoLiKey(row);
+            const matchedPrefix10 =
+                (soLiKey && prefixMaps.soLiPrefixMap.get(soLiKey)) ||
+                extract800Prefix10(vVal);
+
+            if (matchedPrefix10 && String(cartonRaw).trim() !== "") {
+                const paddedCarton = padCartonIdForBarcode7(cartonRaw);
+                if (paddedCarton !== "") {
+                    g2 = matchedPrefix10 + paddedCarton;
+                }
+            }
+
+            return {
+                "BAR CODE 1": a2,
+                "BAR CODE 2": b2,
+                "BAR CODE 3": c2,
+                "BAR CODE 4": d2,
+                "BAR CODE 5": e2,
+                "BAR CODE 6": f2,
+                "BAR CODE 7": g2
+            };
+        }
+
+        function handleFileUpload(event, slotNum = 1) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (typeof XLSX === "undefined") {
+                return;
+            }
+
+            updateMmHeaderWithDate(slotNum, file.name);
+            const fileNameEl = document.getElementById(`fileName${slotNum}`);
+            if (fileNameEl) fileNameEl.innerText = `Uploading: ${file.name}...`;
+            setUploadProgress(5, slotNum);
+            
+            const reader = new FileReader();
+
+            reader.onprogress = function(e) {
+                if (e.lengthComputable && e.total > 0) {
+                    const readPct = 5 + (e.loaded / e.total) * 35;
+                    setUploadProgress(readPct, slotNum);
+                }
+            };
+
+            reader.onload = function(e) {
+                const rawBuffer = e.target.result;
+                setUploadProgress(45, slotNum);
+                setTimeout(() => {
+                    try {
+                        const data = new Uint8Array(rawBuffer);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        setUploadProgress(60, slotNum);
+
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+                        
+                        let headerRowIndex = 0;
+                        for (let i = 0; i < Math.min(rawRows.length, 50); i++) {
+                            const rowStr = rawRows[i].join(" ").toLowerCase();
+                            if (rowStr.includes("barcode") || rowStr.includes("plnt") || rowStr.includes("carton") || rowStr.includes("qty")) {
+                                headerRowIndex = i;
+                                break;
+                            }
+                        }
+
+                        const parsedRows = XLSX.utils.sheet_to_json(worksheet, { range: headerRowIndex, defval: "" });
+                        const prefixMaps = buildPrefixMapBySoLi(parsedRows);
+                        setUploadProgress(72, slotNum);
+
+                        const totalRows = parsedRows.length;
+                        const resultRows = new Array(totalRows);
+                        const chunkSize = 500;
+                        let currentIndex = 0;
+
+                        function processChunk() {
+                            const end = Math.min(currentIndex + chunkSize, totalRows);
+                            for (let idx = currentIndex; idx < end; idx++) {
+                                const row = parsedRows[idx];
+                                let cleanRow = {};
+                                let evaluated = calculateAllFormulas(row, prefixMaps);
+
+                                let docItemCombined = getRowSoLiKey(row);
+                                cleanRow["DOCUMENT::ITEM"] = docItemCombined;
+
+                                cleanRow["BAR CODE 1"] = evaluated["BAR CODE 1"];
+                                cleanRow["BAR CODE 2"] = evaluated["BAR CODE 2"];
+                                cleanRow["BAR CODE 3"] = evaluated["BAR CODE 3"];
+                                cleanRow["BAR CODE 4"] = evaluated["BAR CODE 4"];
+                                cleanRow["BAR CODE 5"] = evaluated["BAR CODE 5"];
+                                cleanRow["BAR CODE 6"] = evaluated["BAR CODE 6"];
+                                cleanRow["BAR CODE 7"] = evaluated["BAR CODE 7"];
+
+                                let tempRow = {};
+                                Object.keys(row).forEach(k => {
+                                    if (k && !k.trim().toLowerCase().startsWith("__empty")) {
+                                        tempRow[k.trim().toUpperCase()] = row[k];
+                                    }
+                                });
+
+                                let cartonKey = Object.keys(tempRow).find(k => k.includes("CARTON"));
+                                let grvKey = Object.keys(tempRow).find(k => k.includes("GRV") || k.includes("SIZE"));
+                                
+                                Object.keys(tempRow).forEach(k => {
+                                    if (k !== cartonKey) {
+                                        if (k === grvKey && cartonKey && tempRow[cartonKey] !== undefined) {
+                                            cleanRow[cartonKey] = tempRow[cartonKey];
+                                        }
+                                        cleanRow[k] = tempRow[k];
+                                    }
+                                });
+
+                                resultRows[idx] = cleanRow;
+                            }
+
+                            currentIndex = end;
+                            const processPct = totalRows > 0 ? 72 + (currentIndex / totalRows) * 26 : 98;
+                            setUploadProgress(processPct, slotNum);
+
+                            if (currentIndex < totalRows) {
+                                setTimeout(processChunk, 0);
+                            } else {
+                                const slotLabel = `${file.name} (${resultRows.length} rows)`;
+                                if (slotNum === 2) {
+                                    slot2Rows = resultRows;
+                                    slot2Label = slotLabel;
+                                } else {
+                                    slot1Rows = resultRows;
+                                    slot1Label = slotLabel;
+                                }
+
+                                syncCombinedDatabaseFromSlots();
+                                setUploadProgress(100, slotNum);
+                                renderFileLoadedWithCheck(slotLabel, slotNum);
+                                hideUploadProgressAfterCheck(slotNum);
+                                event.target.value = "";
+                            }
+                        }
+
+                        processChunk();
+                    } catch (err) {
+                        console.error("File upload error:", err);
+                        if (fileNameEl) fileNameEl.innerText = "Error loading file: " + err.message;
+                        event.target.value = "";
+                    }
+                }, 20);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function setScanStatus(message, type = "info") {
+            const existingBadge = document.getElementById("scanStatusBadge");
+            if (existingBadge) {
+                existingBadge.remove();
+            }
+        }
+
+        function isAutoScanEnabled() {
+            const cb = document.getElementById("autoScanCheckbox");
+            return Boolean(cb && cb.checked);
+        }
+
+        function updateScanModeUi() {
+            const enabled = isAutoScanEnabled();
+            const hintEl = document.getElementById("scanModeHint");
+            const inputEl = document.getElementById("scanInput");
+
+            if (hintEl) {
+                hintEl.textContent = enabled
+                    ? "Auto scan enabled: scans automatically when barcode is entered."
+                    : "Manual mode: enter Barcode and press Scan or Enter.";
+            }
+            if (inputEl) {
+                inputEl.placeholder = enabled
+                    ? "Scan or enter Barcode (Auto scan ON)..."
+                    : "Scan or enter Barcode...";
+            }
+            setScanStatus(enabled ? "Ready (Auto scan ON)" : "Ready (Manual mode)", "info");
+        }
+
+        function handleAutoScanToggle(checked) {
+            clearAutoScanTimer();
+            updateScanModeUi();
+            if (checked) {
+                const inputEl = document.getElementById("scanInput");
+                if (inputEl && inputEl.value.replace(/[\r\n]+/g, "").trim() !== "") {
+                    triggerAutoScanNow();
+                }
+            }
+        }
+
+        function clearAutoScanTimer() {
+            if (autoScanTimer) {
+                clearTimeout(autoScanTimer);
+                autoScanTimer = null;
+            }
+        }
+
+        function triggerAutoScanNow() {
+            clearAutoScanTimer();
+            const scanInputEl = document.getElementById("scanInput");
+            if (!scanInputEl) return;
+            const cleaned = scanInputEl.value.replace(/[\r\n]+/g, "").trim();
+            if (!cleaned) return;
+
+            const now = Date.now();
+            if (cleaned === lastAutoScannedValue && (now - lastAutoScannedAt) < 120) {
+                scanInputEl.value = "";
+                return;
+            }
+            lastAutoScannedValue = cleaned;
+            lastAutoScannedAt = now;
+            processScan();
+        }
+
+        function handleScanPaste() {
+            if (!isAutoScanEnabled()) return;
+            setTimeout(() => {
+                if (isAutoScanEnabled()) {
+                    triggerAutoScanNow();
+                }
+            }, 10);
+        }
+
+        function handleScanKeyPress(event) {
+            if (event.key === "Enter" || event.key === "Tab") {
+                event.preventDefault();
+                clearAutoScanTimer();
+                processScan();
+            }
+        }
+
+        function handleScanInput(event) {
+            const rawVal = event.target.value;
+            if (/[\r\n]/.test(rawVal)) {
+                clearAutoScanTimer();
+                processScan();
+                return;
+            }
+
+            const trimmed = rawVal.trim();
+            clearAutoScanTimer();
+
+            if (!isAutoScanEnabled()) {
+                return;
+            }
+
+            if (!trimmed) {
+                setScanStatus("Ready (Auto scan ON)", "info");
+                return;
+            }
+
+            setScanStatus("Scanning...", "info");
+            autoScanTimer = setTimeout(() => {
+                if (isAutoScanEnabled()) {
+                    triggerAutoScanNow();
+                }
+            }, AUTO_SCAN_DEBOUNCE_MS);
+        }
+
+        function parseNumericQty(rawVal) {
+            if (rawVal === undefined || rawVal === null) return 0;
+            const cleaned = String(rawVal).replace(/,/g, "").trim();
+            if (cleaned === "") return 0;
+            const num = parseFloat(cleaned);
+            return Number.isFinite(num) ? num : 0;
+        }
+
+        function getRowQuantityValue(row) {
+            const qtyKey = findColumnKey(row, ["QUANTITY", "QTY", "PCS", "T"]);
+            if (qtyKey !== null && row[qtyKey] !== undefined) {
+                return parseNumericQty(row[qtyKey]);
+            }
+            return parseNumericQty(getFieldVal(row, ["QUANTITY", "QTY", "PCS", "T"]));
+        }
+
+        function rowMatchesScannedBarcode(row, scannedBarcodeLower) {
+            if (!scannedBarcodeLower || !row) return false;
+            const values = Object.values(row);
+            for (let j = 0; j < values.length; j++) {
+                const v = values[j];
+                if (v !== undefined && v !== null && String(v).trim().toLowerCase() === scannedBarcodeLower) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function calculateSumifsQuantity(matchedRow, scannedBarcode = "") {
+            const targetBarcodeLower = String(scannedBarcode || "").trim().toLowerCase();
+
+            if (targetBarcodeLower) {
+                let matchedTotalQty = 0;
+                let foundAnyRow = false;
+
+                for (let i = 0; i < localDatabase.length; i++) {
+                    const row = localDatabase[i];
+                    if (rowMatchesScannedBarcode(row, targetBarcodeLower)) {
+                        foundAnyRow = true;
+                        matchedTotalQty += getRowQuantityValue(row);
+                    }
+                }
+
+                if (foundAnyRow) {
+                    return matchedTotalQty;
+                }
+            }
+
+            const targetDoc = getFieldVal(matchedRow, ["SALES DOCUMENT", "DOCUMENT", "DOC", "J"]);
+            const targetCarton = getFieldVal(matchedRow, ["CARTON ID", "CARTON", "CTN", "BOX ID", "P"]);
+            const targetSize = getFieldVal(matchedRow, ["SIZE", "GRV", "Q"]);
+
+            let totalQty = 0;
+
+            for (let i = 0; i < localDatabase.length; i++) {
+                const row = localDatabase[i];
+                const docVal = getFieldVal(row, ["SALES DOCUMENT", "DOCUMENT", "DOC", "J"]);
+                const cartonVal = getFieldVal(row, ["CARTON ID", "CARTON", "CTN", "BOX ID", "P"]);
+                const sizeVal = getFieldVal(row, ["SIZE", "GRV", "Q"]);
+                const qtyVal = getRowQuantityValue(row);
+
+                if (docVal === targetDoc && cartonVal === targetCarton && sizeVal === targetSize) {
+                    totalQty += qtyVal;
+                }
+            }
+
+            return totalQty > 0 ? totalQty : getRowQuantityValue(matchedRow);
+        }
+
+        function getTotalDatabaseSumQuantity() {
+            let grandTotal = 0;
+            for (let i = 0; i < localDatabase.length; i++) {
+                const qVal = parseFloat(getFieldVal(localDatabase[i], ["QUANTITY", "QTY", "PCS", "T"])) || 0;
+                grandTotal += qVal;
+            }
+            return grandTotal;
+        }
+
+        function getFilteredSumQuantity(dataList) {
+            let filteredTotal = 0;
+            for (let i = 0; i < dataList.length; i++) {
+                const qVal = parseFloat(getFieldVal(dataList[i], ["QUANTITY", "QTY", "PCS", "T"])) || 0;
+                filteredTotal += qVal;
+            }
+            return filteredTotal;
+        }
+
+        function escapeHtml(str) {
+            return String(str ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function normalizeSoLiCompare(val) {
+            return String(val ?? "")
+                .trim()
+                .toLowerCase()
+                .replace(/\s*::\s*/g, "::");
+        }
+
+        function getMmSourceRows() {
+            if (Array.isArray(slot2Rows) && slot2Rows.length > 0) {
+                return slot2Rows;
+            }
+            return localDatabase;
+        }
+
+        function extractStyleFromRow(row) {
+            if (!row) return "";
+            const direct = getFieldVal(row, ["STYLE", "STYLE NO", "STYLE CODE", "MATNR", "MATERIAL"]);
+            if (direct) return direct;
+
+            const keys = Object.keys(row);
+            for (let i = 0; i < keys.length; i++) {
+                const k = keys[i].trim().toLowerCase();
+                if (k.includes("style")) {
+                    const v = String(row[keys[i]] ?? "").trim();
+                    if (v) return v;
+                }
+            }
+            return "";
+        }
+
+        function extractColorFromRow(row) {
+            if (!row) return "";
+            const direct = getFieldVal(row, ["COLOR", "COLOUR", "CLR", "COL"]);
+            if (direct) return direct;
+
+            const keys = Object.keys(row);
+            for (let i = 0; i < keys.length; i++) {
+                const k = keys[i].trim().toLowerCase();
+                if (k.includes("color") || k.includes("colour")) {
+                    const v = String(row[keys[i]] ?? "").trim();
+                    if (v) return v;
+                }
+            }
+            return "";
+        }
+
+        function getCombinedSoLiFromRow(row) {
+            if (!row) return "";
+            const direct = getRowSoLiKey(row);
+            if (direct) return direct;
+
+            const soVal = getFieldVal(row, ["SALES ORDER", "SO", "SO NO", "SALES DOCUMENT", "DOCUMENT", "DOC", "ORDER"]);
+            const liVal = getFieldVal(row, ["LINE ITEM", "LI", "LI NO", "ITEM", "ITM", "ITEM NO"]);
+            if (soVal !== "" && liVal !== "") {
+                return `${soVal}::${liVal}`;
+            }
+            return soVal !== "" ? soVal : liVal;
+        }
+
+        function lookupStyleAndColorFromMm(soLiVal, fallbackRow = null) {
+            const targetNorm = normalizeSoLiCompare(soLiVal);
+            const mmRows = getMmSourceRows();
+
+            let styleVal = "";
+            let colorVal = "";
+
+            if (targetNorm) {
+                for (let i = 0; i < mmRows.length; i++) {
+                    const row = mmRows[i];
+                    const rowSoLiNorm = normalizeSoLiCompare(getCombinedSoLiFromRow(row));
+                    let matchedBySoLi = rowSoLiNorm === targetNorm;
+
+                    if (!matchedBySoLi) {
+                        const vals = Object.values(row);
+                        for (let j = 0; j < vals.length; j++) {
+                            if (normalizeSoLiCompare(vals[j]) === targetNorm) {
+                                matchedBySoLi = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (matchedBySoLi) {
+                        if (!styleVal) styleVal = extractStyleFromRow(row);
+                        if (!colorVal) colorVal = extractColorFromRow(row);
+                        if (styleVal && colorVal) break;
+                    }
+                }
+            }
+
+            if (!styleVal && fallbackRow) {
+                styleVal = extractStyleFromRow(fallbackRow);
+            }
+            if (!colorVal && fallbackRow) {
+                colorVal = extractColorFromRow(fallbackRow);
+            }
+
+            return { style: styleVal, color: colorVal };
+        }
+
+        function resolveItemFromBunTypeRaw(rawVal) {
+            const cleaned = String(rawVal ?? "").trim().toUpperCase();
+            if (!cleaned) return "";
+            if (cleaned.includes("FALLOUT")) return "FALLOUT";
+            if (cleaned.includes("SOQTY")) return "SOQTY";
+            return String(rawVal ?? "").trim();
+        }
+
+        function lookupItemFromMmByBarcode(barcodeVal, soLiVal = "", fallbackBunType = "") {
+            const targetBarcodeLower = String(barcodeVal ?? "").trim().toLowerCase();
+            const targetSoLiNorm = normalizeSoLiCompare(soLiVal);
+            const mmRows = getMmSourceRows();
+
+            if (targetBarcodeLower) {
+                for (let i = 0; i < mmRows.length; i++) {
+                    const row = mmRows[i];
+                    if (rowMatchesScannedBarcode(row, targetBarcodeLower)) {
+                        const rawBun = getFieldVal(row, ["BUN.TYPE", "BUN TYPE", "BUNTYPE"]);
+                        const resolved = resolveItemFromBunTypeRaw(rawBun);
+                        if (resolved) return resolved;
+                    }
+                }
+            }
+
+            if (targetSoLiNorm) {
+                for (let i = 0; i < mmRows.length; i++) {
+                    const row = mmRows[i];
+                    const rowSoLiNorm = normalizeSoLiCompare(getCombinedSoLiFromRow(row));
+                    let matchedBySoLi = rowSoLiNorm === targetSoLiNorm;
+                    if (!matchedBySoLi) {
+                        const vals = Object.values(row);
+                        for (let j = 0; j < vals.length; j++) {
+                            if (normalizeSoLiCompare(vals[j]) === targetSoLiNorm) {
+                                matchedBySoLi = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (matchedBySoLi) {
+                        const rawBun = getFieldVal(row, ["BUN.TYPE", "BUN TYPE", "BUNTYPE"]);
+                        const resolved = resolveItemFromBunTypeRaw(rawBun);
+                        if (resolved) return resolved;
+                    }
+                }
+            }
+
+            if (fallbackBunType) {
+                return resolveItemFromBunTypeRaw(fallbackBunType);
+            }
+
+            return "";
+        }
+
+        function clearKanbanTipInput() {
+            const kanbanEl = document.getElementById("kanbanTipInput");
+            if (kanbanEl) {
+                kanbanEl.value = "";
+                kanbanEl.focus();
+            }
+        }
+
+        function clearPalletIdInput() {
+            const palletEl = document.getElementById("palletIdInput");
+            if (palletEl) {
+                palletEl.value = "";
+                palletEl.focus();
+            }
+        }
+
+        function getBunTypeVal(row) {
+            if (!row) return "";
+            const val = getFieldVal(row, ["BUN.TYPE", "BUN TYPE", "BUNTYPE", "BUNDLE TYPE", "BUNDLE.TYPE"]);
+            if (val) return val;
+            const keys = Object.keys(row);
+            for (let k of keys) {
+                const nk = k.trim().toLowerCase().replace(/[\s._-]+/g, "");
+                if (nk === "buntype" || nk.includes("buntype") || nk.includes("bundletype")) {
+                    const v = String(row[k] ?? "").trim();
+                    if (v) return v;
+                }
+            }
+            return "";
+        }
+
+        function lookupBunTypeByBarcode(barcodeVal, fallbackRow = null) {
+            const directFromRow = getBunTypeVal(fallbackRow);
+            if (directFromRow) return directFromRow;
+
+            const target = String(barcodeVal ?? "").trim().toLowerCase();
+            if (!target) return "";
+
+            if (barcodeLookupMap && barcodeLookupMap.size > 0) {
+                const mapped = barcodeLookupMap.get(target);
+                const mappedBun = getBunTypeVal(mapped);
+                if (mappedBun) return mappedBun;
+            }
+
+            if (Array.isArray(localDatabase)) {
+                for (let i = 0; i < localDatabase.length; i++) {
+                    const r = localDatabase[i];
+                    const matchesBarcode =
+                        String(r["BARCODE"] ?? "").trim().toLowerCase() === target ||
+                        String(r["BAR CODE 1"] ?? "").trim().toLowerCase() === target ||
+                        String(r["BAR CODE 2"] ?? "").trim().toLowerCase() === target ||
+                        String(r["BAR CODE 3"] ?? "").trim().toLowerCase() === target ||
+                        String(r["BAR CODE 4"] ?? "").trim().toLowerCase() === target ||
+                        String(r["BAR CODE 5"] ?? "").trim().toLowerCase() === target ||
+                        String(r["BAR CODE 6"] ?? "").trim().toLowerCase() === target ||
+                        String(r["BAR CODE 7"] ?? "").trim().toLowerCase() === target ||
+                        Object.values(r).some(v => String(v ?? "").trim().toLowerCase() === target);
+
+                    if (matchesBarcode) {
+                        const bunVal = getBunTypeVal(r);
+                        if (bunVal) return bunVal;
+                    }
+                }
+            }
+
+            return "";
+        }
+
+        function processScan() {
+            clearAutoScanTimer();
+            const scanInputEl = document.getElementById("scanInput");
+            const rawScannedValue = scanInputEl.value.replace(/[\r\n]+/g, "");
+            const query = rawScannedValue.trim();
+            if (!query) return;
+
+            if (localDatabase.length === 0) {
+                setScanStatus("Database is empty. Upload an SAP file first.", "error");
+                scanInputEl.value = "";
+                scanInputEl.focus();
+                return;
+            }
+
+            if (barcodeLookupMap.size === 0) {
+                rebuildBarcodeLookupMap();
+            }
+
+            const qLower = query.toLowerCase();
+            const matchedRow = barcodeLookupMap.get(qLower) || localDatabase.find(row => {
+                return Object.values(row).some(val => String(val).trim().toLowerCase() === qLower);
+            });
+
+            if (matchedRow) {
+                const docVal = getFieldVal(matchedRow, ["DOCUMENT", "DOC", "ORDER", "SALES DOCUMENT"]);
+                const itemVal = getFieldVal(matchedRow, ["ITEM", "ITM", "ITEM NO"]);
+                const soLiVal = (docVal !== "" && itemVal !== "")
+                    ? `${docVal}::${itemVal}`
+                    : (docVal !== "" ? docVal : itemVal);
+
+                // OPTIMIZED: Use cache for Style/Color
+                let style = "", color = "";
+                const targetSoLiNorm = normalizeSoLiCompare(soLiVal);
+                if (soLiStyleColorMap.has(targetSoLiNorm)) {
+                    const sc = soLiStyleColorMap.get(targetSoLiNorm);
+                    style = sc.style;
+                    color = sc.color;
+                } else {
+                    const mmStyleColor = lookupStyleAndColorFromMm(soLiVal, matchedRow);
+                    style = mmStyleColor.style;
+                    color = mmStyleColor.color;
+                }
+
+                // OPTIMIZED: Use cache for Quantity
+                let summedQuantity = 0;
+                if (barcodeQtySumMap.has(qLower)) {
+                    summedQuantity = barcodeQtySumMap.get(qLower);
+                } else {
+                    summedQuantity = calculateSumifsQuantity(matchedRow, query);
+                }
+
+                // OPTIMIZED: Use cache for Item Status
+                let itemStatus = "";
+                if (barcodeItemMap.has(qLower)) {
+                    itemStatus = barcodeItemMap.get(qLower);
+                } else {
+                    const bunTypeVal = lookupBunTypeByBarcode(query, matchedRow);
+                    itemStatus = lookupItemFromMmByBarcode(query, soLiVal, bunTypeVal);
+                }
+
+                const cartonVal = getFieldVal(matchedRow, ["CARTON ID", "CARTON", "CTN", "BOX ID"]);
+                const isDuplicate = scannedList.some(
+                    item => item.barcode.toLowerCase() === qLower && String(item.cartonId) === String(cartonVal)
+                );
+
+                const kanbanTipEl = document.getElementById("kanbanTipInput");
+                const kanbanVal = kanbanTipEl ? kanbanTipEl.value.trim() : "";
+                const palletIdEl = document.getElementById("palletIdInput");
+                const palletIdVal = palletIdEl ? palletIdEl.value.trim() : "";
+
+                const bunTypeVal = lookupBunTypeByBarcode(query, matchedRow);
+
+                const scanRecord = {
+                    plnt: getFieldVal(matchedRow, ["PLNT", "PLANT", "SITE", "LOCATION"]),
+                    document: docVal,
+                    item: itemVal,
+                    soLi: soLiVal,
+                    style: style,
+                    color: color,
+                    cartonId: cartonVal,
+                    size: getFieldVal(matchedRow, ["SIZE", "GRV"]),
+                    barcode: rawScannedValue,
+                    kanbanNo: kanbanVal,
+                    palletId: palletIdVal,
+                    quantity: summedQuantity,
+                    bunType: bunTypeVal,
+                    itemStatus: itemStatus
+                };
+
+                scannedList.unshift(scanRecord);
+                document.getElementById("scannedCount").innerText = scannedList.length;
+
+                renderScannedTable();
+                setScanStatus(
+                    isDuplicate
+                        ? `Scanned (Duplicate): ${query} | SO::LI: ${soLiVal || "-"} | Style: ${style || "-"} | color: ${color || "-"}`
+                        : `Matched: ${query} | SO::LI: ${soLiVal || "-"} | Style: ${style || "-"} | color: ${color || "-"}`,
+                    isDuplicate ? "info" : "success"
+                );
+            } else {
+                setScanStatus(`Not found in SAP DB: "${query}"`, "error");
+            }
+
+            scanInputEl.value = "";
+            scanInputEl.focus();
+        }
+
+        function getScannedCartonCount() {
+            let count = 0;
+            for (let i = 0; i < scannedList.length; i++) {
+                const ctn = String(scannedList[i].cartonId ?? "").trim();
+                if (ctn !== "") {
+                    count++;
+                }
+            }
+            return count > 0 ? count : scannedList.length;
+        }
+
+        function getScannedTotalQuantity() {
+            let total = 0;
+            for (let i = 0; i < scannedList.length; i++) {
+                total += parseFloat(scannedList[i].quantity) || 0;
+            }
+            return total;
+        }
+
+        // ============================================================
+        // UNIVERSAL TABLE FILTER COMPONENT
+        // ============================================================
+        const filterSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>`;
+
+        function createFilterComponent(thElement, colKey, colLabel, getUniqueValuesFn, currentFilterVal, onSelectFn) {
+            if (thElement.querySelector(".filter-btn-ui")) return;
+            
+            thElement.style.position = "relative";
+
+            if (!thElement.querySelector('.th-content-wrapper')) {
+                const wrapper = document.createElement('div');
+                wrapper.className = "th-content-wrapper";
+                while (thElement.firstChild) {
+                    wrapper.appendChild(thElement.firstChild);
+                }
+                thElement.appendChild(wrapper);
+            }
+
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "filter-btn-ui" + (currentFilterVal ? " active" : "");
+            btn.innerHTML = filterSVG;
+            btn.title = `Filter ${colLabel}`;
+            
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const dd = thElement.querySelector(".filter-dropdown-ui");
+                if (!dd) return;
+                const wasOpen = dd.classList.contains("open");
+                document.querySelectorAll(".filter-dropdown-ui.open").forEach(el => el.classList.remove("open"));
+                if (!wasOpen) {
+                    buildFilterDropdown(thElement, colKey, getUniqueValuesFn, currentFilterVal, onSelectFn);
+                    const newDd = thElement.querySelector(".filter-dropdown-ui");
+                    if (newDd) {
+                        newDd.classList.add("open");
+                        const searchInp = newDd.querySelector(".filter-search-input");
+                        if (searchInp) setTimeout(() => searchInp.focus(), 50);
+                    }
+                }
+            });
+
+            const wrapper = thElement.querySelector('.th-content-wrapper');
+            if (wrapper) wrapper.appendChild(btn);
+            else thElement.appendChild(btn);
+            
+            buildFilterDropdown(thElement, colKey, getUniqueValuesFn, currentFilterVal, onSelectFn);
+        }
+
+        function buildFilterDropdown(thElement, colKey, getUniqueValuesFn, currentFilterVal, onSelectFn) {
+            const existing = thElement.querySelector(".filter-dropdown-ui");
+            if (existing) existing.remove();
+
+            const dropdown = document.createElement("div");
+            dropdown.className = "filter-dropdown-ui";
+
+            const searchInput = document.createElement("input");
+            searchInput.type = "text";
+            searchInput.className = "filter-search-input";
+            searchInput.placeholder = "Search...";
+            searchInput.addEventListener("input", (e) => {
+                const term = e.target.value.toLowerCase();
+                const btns = dropdown.querySelectorAll(".filter-option-btn");
+                btns.forEach(btn => {
+                    if (btn.textContent.toLowerCase().includes(term)) {
+                        btn.style.display = "block";
+                    } else {
+                        btn.style.display = "none";
+                    }
+                });
+            });
+            searchInput.addEventListener("click", (e) => e.stopPropagation());
+            dropdown.appendChild(searchInput);
+
+            const optionsContainer = document.createElement("div");
+            optionsContainer.className = "filter-options-container";
+            dropdown.appendChild(optionsContainer);
+
+            const uniqueVals = getUniqueValuesFn();
+
+            const allBtn = document.createElement("button");
+            allBtn.type = "button";
+            allBtn.className = "filter-option-btn" + (!currentFilterVal ? " selected" : "");
+            allBtn.textContent = "All";
+            allBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                onSelectFn("");
+                document.querySelectorAll(".filter-dropdown-ui.open").forEach(el => el.classList.remove("open"));
+            });
+            optionsContainer.appendChild(allBtn);
+
+            if (uniqueVals.length === 0) {
+                const empty = document.createElement("div");
+                empty.className = "filter-empty-text";
+                empty.textContent = "(no values)";
+                optionsContainer.appendChild(empty);
+            } else {
+                uniqueVals.forEach(val => {
+                    if (val === "") return;
+                    const btn = document.createElement("button");
+                    btn.type = "button";
+                    btn.className = "filter-option-btn" + (String(val).toLowerCase() === String(currentFilterVal).toLowerCase() && currentFilterVal !== "" ? " selected" : "");
+                    btn.textContent = val;
+                    btn.title = val;
+                    btn.addEventListener("click", (e) => {
+                        e.stopPropagation();
+                        if (currentFilterVal !== "" && String(currentFilterVal).toLowerCase() === String(val).toLowerCase()) {
+                            onSelectFn("");
+                        } else {
+                            onSelectFn(val);
+                        }
+                        document.querySelectorAll(".filter-dropdown-ui.open").forEach(el => el.classList.remove("open"));
+                    });
+                    optionsContainer.appendChild(btn);
+                });
+            }
+            thElement.appendChild(dropdown);
+        }
+
+        // Global click to close dropdowns
+        document.addEventListener("click", () => {
+            document.querySelectorAll(".filter-dropdown-ui.open").forEach(el => el.classList.remove("open"));
+        });
+
+        // ============================================================
+        // SCAN TABLE FILTER LOGIC
+        // ============================================================
+        const SCAN_FILTER_COLUMNS = [
+            { key: "palletId",  label: "Pallet ID"  },
+            { key: "barcode",   label: "Barcode"    },
+            { key: "kanbanNo",  label: "KANBAN NO"  },
+            { key: "plnt",      label: "Plnt"       },
+            { key: "document",  label: "Document"   },
+            { key: "item",      label: "Item"       },
+            { key: "soLi",      label: "SO::LI"     },
+            { key: "style",     label: "Style"      },
+            { key: "color",     label: "color"      },
+            { key: "cartonId",  label: "Carton ID"  },
+            { key: "size",      label: "Size"       },
+            { key: "quantity",  label: "Quantity"   },
+            { key: "itemStatus",label: "Item"       }
+        ];
+
+        const scanColumnFilters = {};
+
+        function getScanRowFieldValue(item, key) {
+            if (!item) return "";
+            if (key === "style" || key === "color") {
+                const liveMm = lookupStyleAndColorFromMm(item.soLi);
+                const own = item[key];
+                return (own && String(own).trim() !== "") ? own : (liveMm[key] || "");
+            }
+            if (key === "itemStatus") {
+                const own = item.itemStatus;
+                if (own && String(own).trim() !== "") return own;
+                return lookupItemFromMmByBarcode(item.barcode, item.soLi, item.bunType);
+            }
+            return item[key] ?? "";
+        }
+
+        function getScanFilteredList() {
+            const activeKeys = Object.keys(scanColumnFilters).filter(k => scanColumnFilters[k] !== "" && scanColumnFilters[k] !== null);
+            if (activeKeys.length === 0) return scannedList;
+            return scannedList.filter(item => {
+                for (let i = 0; i < activeKeys.length; i++) {
+                    const key = activeKeys[i];
+                    const expected = String(scanColumnFilters[key]).toLowerCase();
+                    const actual = String(getScanRowFieldValue(item, key)).toLowerCase();
+                    if (actual !== expected) return false;
+                }
+                return true;
+            });
+        }
+
+        function getScanFilteredCartonCount(list) {
+            let count = 0;
+            for (let i = 0; i < list.length; i++) {
+                const ctn = String(list[i].cartonId ?? "").trim();
+                if (ctn !== "") count++;
+            }
+            return count > 0 ? count : list.length;
+        }
+
+        function getScanFilteredTotalQuantity(list) {
+            let total = 0;
+            for (let i = 0; i < list.length; i++) {
+                total += parseFloat(list[i].quantity) || 0;
+            }
+            return total;
+        }
+
+        function clearScanFilters() {
+            Object.keys(scanColumnFilters).forEach(k => delete scanColumnFilters[k]);
+            renderScannedTable();
+        }
+
+        function injectScanFilterButtons() {
+            const headRow = document.querySelector("#scanTableHead tr");
+            if (!headRow) return;
+            const ths = headRow.querySelectorAll("th");
+            ths.forEach((th, idx) => {
+                const colDef = SCAN_FILTER_COLUMNS[idx];
+                if (!colDef) return;
+                
+                const getUniqueValues = () => {
+                    const seen = new Map();
+                    for (let i = 0; i < scannedList.length; i++) {
+                        const raw = getScanRowFieldValue(scannedList[i], colDef.key);
+                        const display = String(raw ?? "").trim();
+                        const key = display.toLowerCase();
+                        if (!seen.has(key)) seen.set(key, display);
+                    }
+                    return Array.from(seen.values()).sort((a, b) =>
+                        String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" })
+                    );
+                };
+
+                const onSelect = (val) => {
+                    if (val === "") delete scanColumnFilters[colDef.key];
+                    else scanColumnFilters[colDef.key] = val;
+                    renderScannedTable();
+                };
+
+                createFilterComponent(th, colDef.key, colDef.label, getUniqueValues, scanColumnFilters[colDef.key], onSelect);
+                
+                const btn = th.querySelector(".filter-btn-ui");
+                if (btn) {
+                    if (scanColumnFilters[colDef.key]) btn.classList.add("active");
+                    else btn.classList.remove("active");
+                }
+            });
+        }
+
+        function renderScannedTable() {
+            const tbody = document.getElementById("scanTableBody");
+            let htmlContent = "";
+
+            injectScanFilterButtons();
+
+            const filteredList = getScanFilteredList();
+
+            if (filteredList.length === 0) {
+                const msg = scannedList.length === 0
+                    ? "No cartons scanned yet."
+                    : "No records match the active filters.";
+                
+                htmlContent += `<tr><td colspan="14" class="p-4 text-center text-gray-400">${msg}</td></tr>`;
+
+                htmlContent += `
+                    <tr class="scan-summary-row">
+                        <td colspan="9" class="scan-summary-cell px-2.5 border-r text-right text-slate-800 font-extrabold">Total:</td>
+                        <td class="scan-summary-cell px-2.5 border-r text-red-700 font-extrabold text-[14px]">0</td>
+                        <td class="scan-summary-cell px-2.5 border-r"></td>
+                        <td class="scan-summary-cell px-2.5 border-r text-green-800 font-extrabold text-[14px]">0</td>
+                        <td class="scan-summary-cell px-2.5 border-r"></td>
+                        <td class="scan-summary-cell px-2.5 text-center"></td>
+                    </tr>
+                `;
+                tbody.innerHTML = htmlContent;
+                return;
+            }
+
+            const barcodeCounts = new Map();
+            scannedList.forEach(item => {
+                const key = String(item.barcode ?? "").trim().toLowerCase();
+                barcodeCounts.set(key, (barcodeCounts.get(key) || 0) + 1);
+            });
+
+            let cutoffIndex = scannedList.length;
+            for (let i = 0; i < scannedList.length; i++) {
+                const plntVal = scannedList[i].plnt;
+                if (!plntVal || String(plntVal).trim() === "") {
+                    cutoffIndex = i;
+                    break;
+                }
+            }
+
+            let displayList = filteredList.filter(item => {
+                const originalIndex = scannedList.indexOf(item);
+                return originalIndex < cutoffIndex;
+            });
+
+            if (displayList.length === 0) {
+                 htmlContent += `<tr><td colspan="14" class="p-4 text-center text-gray-400">No valid records (PLNT is blank or filtered out).</td></tr>`;
+                 htmlContent += `
+                    <tr class="scan-summary-row">
+                        <td colspan="9" class="scan-summary-cell px-2.5 border-r text-right text-slate-800 font-extrabold">Total:</td>
+                        <td class="scan-summary-cell px-2.5 border-r text-red-700 font-extrabold text-[14px]">0</td>
+                        <td class="scan-summary-cell px-2.5 border-r"></td>
+                        <td class="scan-summary-cell px-2.5 border-r text-green-800 font-extrabold text-[14px]">0</td>
+                        <td class="scan-summary-cell px-2.5 border-r"></td>
+                        <td class="scan-summary-cell px-2.5 text-center"></td>
+                    </tr>
+                `;
+                tbody.innerHTML = htmlContent;
+                return;
+            }
+
+            displayList.forEach((item) => {
+                const index = scannedList.indexOf(item);
+                const key = String(item.barcode ?? "").trim().toLowerCase();
+                const isDuplicateBarcode = (barcodeCounts.get(key) || 0) > 1;
+                const barcodeCellClass = isDuplicateBarcode
+                    ? "px-2.5 border-r font-mono font-bold text-white bg-red-600"
+                    : "px-2.5 border-r font-mono font-semibold text-slate-900";
+
+                const liveMm = lookupStyleAndColorFromMm(item.soLi);
+                const displayStyle = (item.style && String(item.style).trim() !== "") ? item.style : liveMm.style;
+                let displayColor = (item.color && String(item.color).trim() !== "") ? item.color : liveMm.color;
+                
+                if (displayColor && displayColor.length > 15) {
+                    displayColor = displayColor.substring(0, 15) + "...";
+                }
+
+                let displayKanban = item.kanbanNo || "";
+                const fullKanban = displayKanban;
+                if (displayKanban.length > 12) {
+                    displayKanban = displayKanban.substring(0, 12) + "...";
+                }
+
+                const itemStatusVal = (item.itemStatus && String(item.itemStatus).trim() !== "")
+                    ? item.itemStatus
+                    : lookupItemFromMmByBarcode(item.barcode, item.soLi, item.bunType);
+                
+                let statusClass = "text-slate-700";
+                const upperStatus = String(itemStatusVal || "").toUpperCase();
+                if (upperStatus === "FALLOUT") statusClass = "text-red-700 bg-red-50";
+                if (upperStatus === "SOQTY") statusClass = "text-emerald-800 bg-emerald-50";
+
+                htmlContent += `
+                    <tr>
+                        <td class="px-2 border-r font-extrabold text-teal-900 bg-teal-50/70" style="font-size: 14px !important;">${escapeHtml(item.palletId || item.platId || "")}</td>
+                        <td class="${barcodeCellClass} px-2" style="font-size: 13.5px !important;" title="${isDuplicateBarcode ? 'Duplicate barcode detected' : ''}">${escapeHtml(item.barcode)}</td>
+                        <td class="px-2 border-r font-bold text-slate-900" style="background-color: #F6E8C1; font-size: 13.5px !important;" title="${escapeHtml(fullKanban)}">${escapeHtml(displayKanban)}</td>
+                        <td class="px-2 border-r font-semibold text-slate-800" style="font-size: 13.5px !important;">${escapeHtml(item.plnt)}</td>
+                        <td class="px-2.5 border-r">${escapeHtml(item.document)}</td>
+                        <td class="px-2.5 border-r">${escapeHtml(item.item)}</td>
+                        <td class="px-2.5 border-r font-semibold text-blue-600">${escapeHtml(item.soLi)}</td>
+                        <td class="px-2.5 border-r font-semibold text-indigo-900">${escapeHtml(displayStyle)}</td>
+                        <td class="px-2.5 border-r font-semibold text-purple-800" title="${escapeHtml(liveMm.color || item.color || "")}">${escapeHtml(displayColor)}</td>
+                        <td class="px-2.5 border-r font-semibold text-red-600">${escapeHtml(item.cartonId)}</td>
+                        <td class="px-2.5 border-r">${escapeHtml(item.size)}</td>
+                        <td class="px-2.5 border-r font-bold text-green-700">
+                            <input type="number" value="${item.quantity}" onchange="updateScannedQuantity(${index}, this.value)" class="w-14 px-1 py-0.5 border border-gray-300 rounded text-xs font-bold text-green-700 outline-none focus:border-green-600 bg-green-50">
+                        </td>
+                        <td class="px-2.5 border-r font-extrabold ${statusClass}">${escapeHtml(itemStatusVal)}</td>
+                        <td class="px-2.5 text-center">
+                            <button onclick="deleteScannedRow(${index})" class="bg-red-500 hover:bg-red-600 text-white font-bold px-2 py-0.5 rounded text-[11px] shadow">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            htmlContent += `
+                <tr class="scan-summary-row">
+                    <td colspan="9" class="scan-summary-cell px-2.5 border-r text-right text-slate-800 font-extrabold">Total:</td>
+                    <td id="scanSummaryCartonCount" class="scan-summary-cell px-2.5 border-r text-red-700 font-extrabold text-[13px]">${getScanFilteredCartonCount(displayList).toLocaleString()}</td>
+                    <td class="scan-summary-cell px-2.5 border-r"></td>
+                    <td id="scanSummaryTotalQty" class="scan-summary-cell px-2.5 border-r text-green-800 font-extrabold text-[13px]">${getScanFilteredTotalQuantity(displayList).toLocaleString()}</td>
+                    <td class="scan-summary-cell px-2.5 border-r"></td>
+                    <td class="scan-summary-cell px-2.5 text-center"></td>
+                </tr>
+            `;
+
+            tbody.innerHTML = htmlContent;
+        }
+
+        function updateScannedQuantity(index, newQty) {
+            if (scannedList[index]) {
+                scannedList[index].quantity = parseFloat(newQty) || 0;
+                const filteredList = getScanFilteredList();
+                const qtySummaryEl = document.getElementById("scanSummaryTotalQty");
+                if (qtySummaryEl) {
+                    qtySummaryEl.textContent = getScanFilteredTotalQuantity(filteredList).toLocaleString();
+                }
+            }
+        }
+
+        function deleteScannedRow(index) {
+            scannedList.splice(index, 1);
+            document.getElementById("scannedCount").innerText = scannedList.length;
+            renderScannedTable();
+        }
+
+        // ============================================================
+        // DATABASE MODAL LOGIC (OPTIMIZED with Lazy Loading)
+        // ============================================================
+        function clearModalFilters() {
+            Object.keys(modalColumnFilters).forEach(k => delete modalColumnFilters[k]);
+            const el = document.getElementById("modalGlobalSearch");
+            if (el) el.value = "";
+            modalRenderLimit = MODAL_PAGE_SIZE;
+            applyModalFilters();
+        }
+
+        function openDatabaseModal() {
+            const modal = document.getElementById("databaseModal");
+            if (!modal) return;
+            modal.classList.remove("hidden");
+            modal.style.display = "flex";
+            
+            document.getElementById("modalGlobalSearch").value = "";
+            Object.keys(modalColumnFilters).forEach(k => delete modalColumnFilters[k]);
+            modalRenderLimit = MODAL_PAGE_SIZE;
+            applyModalFilters();
+
+            document.getElementById("modalTotalAddedRows").innerText = localDatabase.length.toLocaleString();
+            document.getElementById("modalTotalSumQuantity").innerText = getTotalDatabaseSumQuantity().toLocaleString();
+        }
+
+        function closeDatabaseModal() {
+            const modal = document.getElementById("databaseModal");
+            if (modal) {
+                modal.classList.add("hidden");
+                modal.style.display = "none";
+            }
+        }
+
+        function debouncedApplyModalFilters() {
+            if (filterDebounceTimer) clearTimeout(filterDebounceTimer);
+            filterDebounceTimer = setTimeout(() => {
+                modalRenderLimit = MODAL_PAGE_SIZE; // Reset limit on new search
+                applyModalFilters();
+            }, 300);
+        }
+
+        function loadMoreModalRows() {
+            modalRenderLimit += MODAL_PAGE_SIZE;
+            applyModalFilters();
+        }
+
+        function applyModalFilters() {
+            const query = document.getElementById("modalGlobalSearch").value.trim().toLowerCase();
+            const allKeys = localDatabase.length > 0 ? Object.keys(localDatabase[0]) : [];
+            
+            const thead = document.getElementById("modalTableHead");
+            
+            // Only rebuild header if not built yet or keys changed
+            if (thead.children.length === 0 || thead.dataset.keys !== allKeys.join(',')) {
+                thead.innerHTML = "";
+                thead.dataset.keys = allKeys.join(',');
+                
+                const trHead = document.createElement("tr");
+                trHead.className = "bg-slate-900 text-white text-[11px] border-b border-slate-700";
+                
+                allKeys.forEach(k => {
+                    const th = document.createElement("th");
+                    th.className = "p-2 border-r font-bold whitespace-nowrap sticky top-0 bg-slate-900";
+                    th.innerText = k;
+                    trHead.appendChild(th);
+                });
+                thead.appendChild(trHead);
+
+                trHead.querySelectorAll("th").forEach((th, idx) => {
+                    const key = allKeys[idx];
+                    
+                    const getUniqueValues = () => {
+                        // Check cache first
+                        if (columnOptionsCache.has(key)) return columnOptionsCache.get(key);
+                        
+                        const seen = new Set();
+                        localDatabase.forEach(row => {
+                            const val = String(row[key] ?? "").trim();
+                            if (val !== "") seen.add(val);
+                        });
+                        const sorted = Array.from(seen).sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" }));
+                        columnOptionsCache.set(key, sorted);
+                        return sorted;
+                    };
+                    
+                    const onSelect = (val) => {
+                        if (val === "") delete modalColumnFilters[key];
+                        else modalColumnFilters[key] = val;
+                        modalRenderLimit = MODAL_PAGE_SIZE; // Reset limit on new filter
+                        applyModalFilters();
+                    };
+
+                    createFilterComponent(th, key, key, getUniqueValues, modalColumnFilters[key], onSelect);
+                });
+            }
+
+            // Update filter button visual state
+            thead.querySelectorAll("th").forEach((th, idx) => {
+                const key = allKeys[idx];
+                const btn = th.querySelector(".filter-btn-ui");
+                if (btn) {
+                    if (modalColumnFilters[key]) btn.classList.add("active");
+                    else btn.classList.remove("active");
+                }
+            });
+
+            // Filter data
+            modalFilteredRows = localDatabase.filter(row => {
+                let matchesGlobal = true;
+                if (query !== "") {
+                    matchesGlobal = Object.values(row).some(val => String(val).toLowerCase().includes(query));
+                }
+                if (!matchesGlobal) return false;
+
+                for (const key in modalColumnFilters) {
+                    const expected = String(modalColumnFilters[key]).toLowerCase();
+                    const actual = String(row[key] ?? "").trim().toLowerCase();
+                    if (actual !== expected) return false;
+                }
+                return true;
+            });
+
+            // Render rows up to the limit
+            const tbody = document.getElementById("modalTableBody");
+            let html = "";
+            const rowsToRender = modalFilteredRows.slice(0, modalRenderLimit);
+            
+            rowsToRender.forEach(row => {
+                html += `<tr>`;
+                allKeys.forEach(k => {
+                    html += `<td class="p-2 border-r border-slate-200 whitespace-nowrap">${escapeHtml(row[k] !== undefined ? row[k] : "")}</td>`;
+                });
+                html += `</tr>`;
+            });
+            tbody.innerHTML = html;
+
+            // Update stats and Load More button visibility
+            document.getElementById("modalRecordCount").innerText = `${rowsToRender.length.toLocaleString()} / ${modalFilteredRows.length.toLocaleString()}`;
+            document.getElementById("modalFilteredQuantity").innerText = getFilteredSumQuantity(modalFilteredRows).toLocaleString();
+            
+            const loadMoreContainer = document.getElementById("modalLoadMoreContainer");
+            const loadMoreBtn = document.getElementById("modalLoadMoreBtn");
+            
+            if (modalFilteredRows.length > modalRenderLimit) {
+                loadMoreContainer.style.display = "flex";
+                loadMoreBtn.textContent = `Load More Rows (${modalFilteredRows.length - modalRenderLimit} remaining)`;
+            } else {
+                loadMoreContainer.style.display = "none";
+            }
+        }
+
+        function exportDatabaseWithFormulas() {
+            if (localDatabase.length === 0) { alert("Database is empty."); return; }
+            const ws = XLSX.utils.json_to_sheet(localDatabase);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Database");
+            XLSX.writeFile(wb, `MAS_Database_Export_${new Date().toISOString().slice(0,10)}.xlsx`);
+        }
+
+        function exportScannedData() {
+            if (scannedList.length === 0) { alert("No scanned data to export."); return; }
+            const exportRows = scannedList.map(item => ({
+                "Pallet ID": item.palletId || "",
+                "Barcode": item.barcode || "",
+                "KANBAN NO": item.kanbanNo || "",
+                "Plnt": item.plnt || "",
+                "Document": item.document || "",
+                "Item": item.item || "",
+                "SO::LI": item.soLi || "",
+                "Style": item.style || "",
+                "color": item.color || "",
+                "Carton ID": item.cartonId || "",
+                "Size": item.size || "",
+                "Quantity": item.quantity || 0,
+                "Item Status": item.itemStatus || ""
+            }));
+            const ws = XLSX.utils.json_to_sheet(exportRows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Scanned");
+            XLSX.writeFile(wb, `MAS_Scanned_${new Date().toISOString().slice(0,10)}.xlsx`);
+        }
+
+        function exportScannedPDF() {
+            if (scannedList.length === 0) { alert("No scanned data to export."); return; }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(16);
+            doc.text("GOODS DESPATCH NOTE - Intimo Biyagama", 14, 20);
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(10);
+            doc.text(`GDN Date : ${new Date().toISOString().slice(0, 10)}`, 14, 28);
+            doc.text("Plant Name : H056", 14, 34);
+            
+            doc.text("Gate Pass No :", 100, 28);
+            doc.text("Vehicle No :", 100, 34);
+
+            const tableBody = scannedList.map(item => {
+                const liveMm = lookupStyleAndColorFromMm(item.soLi);
+                const displayStyle = (item.style && String(item.style).trim() !== "") ? item.style : liveMm.style;
+                const displayColor = (item.color && String(item.color).trim() !== "") ? item.color : liveMm.color;
+                
+                return [
+                    item.barcode || "",
+                    item.kanbanNo || "",
+                    item.soLi || "",
+                    displayStyle || "",
+                    displayColor || "",
+                    item.cartonId || "",
+                    item.size || "",
+                    String(item.quantity || 0),
+                    (item.itemStatus && String(item.itemStatus).trim() !== "") ? item.itemStatus : lookupItemFromMmByBarcode(item.barcode, item.soLi, item.bunType) || ""
+                ];
+            });
+
+            const cartonCount = getScannedCartonCount();
+            const totalQty = getScannedTotalQuantity();
+
+            doc.autoTable({
+                startY: 40,
+                head: [["Barcode", "KANBAN NO", "SOLI ID", "STYLE", "COLOUR", "CTN ID", "SIZE", "QTY", "Item"]],
+                body: tableBody,
+                theme: 'grid',
+                headStyles: { 
+                    fillColor: [15, 23, 42],
+                    textColor: 255, 
+                    fontSize: 8, 
+                    fontStyle: 'bold',
+                    halign: 'left'
+                },
+                bodyStyles: { 
+                    fontSize: 8, 
+                    textColor: 50 
+                },
+                columnStyles: {
+                    0: { cellWidth: 28 },
+                    1: { cellWidth: 20 },
+                    2: { cellWidth: 30 },
+                    3: { cellWidth: 20 },
+                    4: { cellWidth: 32 },
+                    5: { cellWidth: 15, halign: 'center' },
+                    6: { cellWidth: 12, halign: 'center' },
+                    7: { cellWidth: 15, halign: 'right' },
+                    8: { cellWidth: 18, halign: 'center' }
+                },
+                foot: [[
+                    "", "", "", "", "", 
+                    `COUNT: ${cartonCount}`, 
+                    "", 
+                    `SUM: ${totalQty}`, 
+                    ""
+                ]],
+                footStyles: { 
+                    fillColor: [255, 255, 255], 
+                    textColor: [0, 0, 0], 
+                    fontStyle: 'bold', 
+                    halign: 'center',
+                    lineWidth: 0.1,
+                    lineColor: [150, 150, 150]
+                },
+                didParseCell: function(data) {
+                    if (data.section === 'foot') {
+                        if (data.column.index === 5) data.cell.styles.halign = 'center';
+                        if (data.column.index === 7) data.cell.styles.halign = 'right';
+                    }
+                }
+            });
+
+            doc.save(`Sleekline_Packing_list_${new Date().toISOString().slice(0,10)}.pdf`);
+        }
+    </script>
+</body>
+</html>
